@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using MC_LOGISTICS;
 
 public class MarchingCubes : MonoBehaviour
 {
@@ -8,6 +9,8 @@ public class MarchingCubes : MonoBehaviour
     public static int voxelSize = 5;
 
     public GameObject spherePrefab;
+
+
 
     struct Voxel
     {
@@ -23,7 +26,13 @@ public class MarchingCubes : MonoBehaviour
         return x * gridSize * gridSize + y * gridSize + z;
     }
 
-    // Start is called before the first frame update
+    float sampleSDF(int x, int y, int z)
+    {
+        float radius = 40.0f; 
+        UnityEngine.Vector3 center = new UnityEngine.Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
+        return UnityEngine.Vector3.Distance(new UnityEngine.Vector3(x, y, z), center) - radius;
+    }
+
     void Start()
     {
         for (int x = 0; x < gridSize; x++)
@@ -46,10 +55,38 @@ public class MarchingCubes : MonoBehaviour
                         int corner_z = z * voxelSize + ((corner >> 2) & 1) * voxelSize;
 
                         voxel.cornerPositions[corner] = new UnityEngine.Vector3(corner_x, corner_y, corner_z);
-                        voxel.densities[corner] = 0.0f;
+                        voxel.densities[corner] = sampleSDF(corner_x, corner_y, corner_z); ;
+
 
                         UnityEngine.Vector3 position = new UnityEngine.Vector3(corner_x, corner_y, corner_z);
-                        Instantiate(spherePrefab, position, UnityEngine.Quaternion.identity);
+
+                        GameObject newSphere = Instantiate(spherePrefab, position, UnityEngine.Quaternion.identity);
+
+                        Renderer renderer = newSphere.GetComponent<Renderer>();
+
+                        if (renderer != null)
+                        {
+                            if (sampleSDF(corner_x, corner_y, corner_z) > 0)
+                            {
+                                renderer.material.color = UnityEngine.Color.white;
+                                newSphere.SetActive(false);
+                            }
+                            else if (sampleSDF(corner_x, corner_y, corner_z) < 0)
+                            {
+                                renderer.material.color = UnityEngine.Color.black;
+                                newSphere.SetActive(true);
+                            }
+                            else if (sampleSDF(corner_x, corner_y, corner_z) == 0)
+                            {
+                                renderer.material.color = UnityEngine.Color.green;
+                            }
+                        }
+                        else
+                        {
+                            Debug.LogWarning("Renderer not found on the instantiated object.");
+                        }
+
+                        //Instantiate(spherePrefab, position, UnityEngine.Quaternion.identity);
                     }
 
                     int index = flattenIndex(x, y, z);
