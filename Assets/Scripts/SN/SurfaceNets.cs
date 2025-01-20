@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-public class DualContouring : MonoBehaviour
+public class SurfaceNets : MonoBehaviour
 {
     public static int gridSize = 16;
     public static int voxelSize = 5;
@@ -40,7 +40,7 @@ public class DualContouring : MonoBehaviour
 
     float sampleSDF(int x, int y, int z)
     {
-        float radius = 20.0f; 
+        float radius = 20.0f;
         UnityEngine.Vector3 center = new UnityEngine.Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
         return UnityEngine.Vector3.Distance(new UnityEngine.Vector3(x, y, z), center) - radius;
     }
@@ -138,141 +138,24 @@ public class DualContouring : MonoBehaviour
                     // Initialize edge data for each voxel
                     initEdgeData(grid[index]);
 
+                    // Accumulate the matrix and vector
+                    Vector3 C = new Vector3();
+                    int n = 0;
                     foreach (Edge edge in grid[index].edgeData)
                     {
                         if (edge.crossed)
                         {
-                            Debug.Log("edge intersection :\n" + edge.intersection);
-
-                            Instantiate(spherePrefab, edge.intersection, UnityEngine.Quaternion.identity);
+                            n++;
+                            C += edge.intersection;
                         }
                     }
 
-                    //-----PARTICLE BASED
-
-                    //Vector3 C = new Vector3();
-
-                    //int n = 0;
-                    //foreach (Edge edge in grid[index].edgeData)
-                    //{ 
-                    //    if (edge.crossed)
-                    //    {
-                    //        n++
-                    //        C += edge.intersection;
-                    //    }
-                    //}
-                    // C = C/n;
-
-                    //Vector3[] F = new Vector3[8];
-                    //for(int i = 0; i < 7; i++)
-                    //{
-                    //    foreach (Edge edge in grid[index].edgeData)
-                    //    {
-                    //        Debug.Log("edge intersection :\n" + edge.intersection );
-                    //        if (edge.crossed)
-                    //        {
-                    //            F[i] += edge.normal * (-edge.intersection.magnitude - 
-                    //                                    Vector3.Dot(edge.normal, grid[index].cornerPositions[i]));
-
-                    //        }
-
-                    //        Debug.Log("F:\n" + F[i] +  " i: " + i);
-                    //    }
-                    //}
-
-
-                    //Vector3 Fl1 = (1 - (C.x / voxelSize)) * F[0] + (C.x / voxelSize) * F[3];
-                    //Vector3 Fl2 = (1 - (C.x / voxelSize)) * F[4] + (C.x / voxelSize) * F[7];
-                    //Vector3 Fl3 = (1 - (C.x / voxelSize)) * F[1] + (C.x / voxelSize) * F[2];
-                    //Vector3 Fl4 = (1 - (C.x / voxelSize)) * F[5] + (C.x / voxelSize) * F[6];
-
-                    //Vector3 Fb1 = (1 - (C.y / voxelSize)) * Fl1 + (C.y / voxelSize) * Fl2;
-                    //Vector3 Fb2 = (1 - (C.y / voxelSize)) * Fl3 + (C.y / voxelSize) * Fl4;
-
-                    //Vector3 Force = (1 - (C.z / voxelSize)) * Fb1 + (C.y / voxelSize) * Fb2;
-
-
-                    //Vector3 pos = Force * 0.05f;
-
-                    //Debug.Log("Force:\n" + Force);
-
-                    //Debug.Log("pos:\n" + pos);
-                    //Instantiate(spherePrefab, pos, UnityEngine.Quaternion.identity);
-
-
-
-
-                    //-----QR/SVD ROUTE
-
-                    //UnityEngine.Matrix4x4 A = new UnityEngine.Matrix4x4();
-                    //UnityEngine.Vector3 b = new UnityEngine.Vector3();
-
-
-
-                    //// Initialize the matrix A to the identity matrix before accumulating
-                    //A.SetRow(0, new Vector4(0, 0, 0, 0));
-                    //A.SetRow(1, new Vector4(0, 0, 0, 0));
-                    //A.SetRow(2, new Vector4(0, 0, 0, 0));
-                    //A.SetRow(3, new Vector4(0, 0, 0, 1));  // For homogeneous coordinates
-
-                    //// Accumulate the matrix and vector
-
-                    //foreach (Edge edge in grid[index].edgeData)
-                    //{
-                    //    if (edge.crossed)
-                    //    {
-                    //        UnityEngine.Vector3 normal = edge.normal;
-                    //        UnityEngine.Vector3 intersectionPoint = edge.intersection;
-
-                    //        // Create the outer product matrix for the normal vector
-                    //        UnityEngine.Matrix4x4 normalOuterProduct = new UnityEngine.Matrix4x4();
-                    //        normalOuterProduct.m00 = normal.x * normal.x;
-                    //        normalOuterProduct.m01 = normal.x * normal.y;
-                    //        normalOuterProduct.m02 = normal.x * normal.z;
-
-                    //        normalOuterProduct.m10 = normal.y * normal.x;
-                    //        normalOuterProduct.m11 = normal.y * normal.y;
-                    //        normalOuterProduct.m12 = normal.y * normal.z;
-
-                    //        normalOuterProduct.m20 = normal.z * normal.x;
-                    //        normalOuterProduct.m21 = normal.z * normal.y;
-                    //        normalOuterProduct.m22 = normal.z * normal.z;
-
-                    //        // Manually add the outer product to the matrix A
-                    //        A.m00 += normalOuterProduct.m00;
-                    //        A.m01 += normalOuterProduct.m01;
-                    //        A.m02 += normalOuterProduct.m02;
-                    //        A.m10 += normalOuterProduct.m10;
-                    //        A.m11 += normalOuterProduct.m11;
-                    //        A.m12 += normalOuterProduct.m12;
-                    //        A.m20 += normalOuterProduct.m20;
-                    //        A.m21 += normalOuterProduct.m21;
-                    //        A.m22 += normalOuterProduct.m22;
-
-                    //        // Update the vector b
-                    //        b += normal * Vector3.Dot(normal, intersectionPoint);
-                    //    }
-                    //}
-
-
-                    //if (A.determinant != 0)
-                    //{
-                    //    UnityEngine.Vector3 position = A.inverse * b;
-                    //    Instantiate(spherePrefab, position, UnityEngine.Quaternion.identity);
-
-                    //    Debug.LogWarning("!!!WORKS!!!");
-                    //    Debug.Log("Matrix A:\n" + A);
-                    //    Debug.Log("Vector b: " + b);
-                    //}
-                    //else
-                    //{
-                    //    cnt++;
-                    //    // Handle the case where the matrix is singular
-                    //    Debug.LogWarning("Matrix A is singular, cannot compute position.");
-                    //    Debug.Log("Matrix A:\n" + A);
-                    //    Debug.Log("Vector b: " + b);
-                    //    Debug.Log("Zeros " + cnt);
-                    //}
+                    if (n > 0)
+                    {
+                        C = C / n;
+                        Debug.Log("vertex position :\n" + C);
+                        Instantiate(spherePrefab, C, UnityEngine.Quaternion.identity);
+                    }
 
                 }
             }
@@ -323,4 +206,5 @@ public class DualContouring : MonoBehaviour
     {
 
     }
+
 }

@@ -57,36 +57,6 @@ public class MarchingCubes : MonoBehaviour
                         voxel.cornerPositions[corner] = new UnityEngine.Vector3(corner_x, corner_y, corner_z);
                         voxel.densities[corner] = sampleSDF(corner_x, corner_y, corner_z); ;
 
-
-                        UnityEngine.Vector3 position = new UnityEngine.Vector3(corner_x, corner_y, corner_z);
-
-                        GameObject newSphere = Instantiate(spherePrefab, position, UnityEngine.Quaternion.identity);
-
-                        Renderer renderer = newSphere.GetComponent<Renderer>();
-
-                        if (renderer != null)
-                        {
-                            if (sampleSDF(corner_x, corner_y, corner_z) > 0)
-                            {
-                                renderer.material.color = UnityEngine.Color.white;
-                                newSphere.SetActive(false);
-                            }
-                            else if (sampleSDF(corner_x, corner_y, corner_z) < 0)
-                            {
-                                renderer.material.color = UnityEngine.Color.black;
-                                newSphere.SetActive(true);
-                            }
-                            else if (sampleSDF(corner_x, corner_y, corner_z) == 0)
-                            {
-                                renderer.material.color = UnityEngine.Color.green;
-                            }
-                        }
-                        else
-                        {
-                            Debug.LogWarning("Renderer not found on the instantiated object.");
-                        }
-
-                        //Instantiate(spherePrefab, position, UnityEngine.Quaternion.identity);
                     }
 
                     int index = flattenIndex(x, y, z);

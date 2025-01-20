@@ -1,2 +1,2 @@
 # IsoSurfaceGen
- implementations for DC and MC
+ implementations for DC, SN and MC
