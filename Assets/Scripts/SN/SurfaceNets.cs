@@ -10,6 +10,8 @@ public class SurfaceNets : MonoBehaviour
 
     public GameObject spherePrefab;
 
+    private List<Vector3> surfacePoints = new List<Vector3>();
+
     struct Edge
     {
         public UnityEngine.Vector3 normal;
@@ -154,6 +156,7 @@ public class SurfaceNets : MonoBehaviour
                     {
                         C = C / n;
                         Debug.Log("vertex position :\n" + C);
+                        surfacePoints.Add(C);
                         Instantiate(spherePrefab, C, UnityEngine.Quaternion.identity);
                     }
 

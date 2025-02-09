@@ -108,7 +108,7 @@ public class DualContouring : MonoBehaviour
 
     void Start()
     {
-        int cnt = 0;
+
         for (int x = 0; x < gridSize; x++)
         {
             for (int y = 0; y < gridSize; y++)
