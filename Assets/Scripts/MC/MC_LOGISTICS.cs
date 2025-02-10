@@ -2,10 +2,44 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+
+// original source of the tables: https://paulbourke.net/geometry/polygonise/
+
 namespace MC_LOGISTICS
 {
     public static class MC_DATA
     {
+
+        public static readonly int[] cornerIndexAFromEdge = new int[12]{
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            0,
+            1,
+            2,
+            3
+        };
+
+        public static readonly int[] cornerIndexBFromEdge = new int[12]{
+            1,
+            2,
+            3,
+            0,
+            5,
+            6,
+            7,
+            4,
+            4,
+            5,
+            6,
+            7
+        };
+
         public static readonly int[] edgeTable = new int[256] {
         0x0  , 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
         0x80c, 0x905, 0xa0f, 0xb06, 0xc0a, 0xd03, 0xe09, 0xf00,

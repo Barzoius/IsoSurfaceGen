@@ -10,7 +10,6 @@ public class SurfaceNets : MonoBehaviour
 
     public GameObject spherePrefab;
 
-    private List<Vector3> surfacePoints = new List<Vector3>();
 
     struct Edge
     {
@@ -24,6 +23,8 @@ public class SurfaceNets : MonoBehaviour
         public float[] densities;
         public UnityEngine.Vector3[] cornerPositions;
         public Edge[] edgeData;
+
+        public Vector3 vertex;
     }
 
     public int[,] edges = new int[12, 2]
@@ -57,60 +58,11 @@ public class SurfaceNets : MonoBehaviour
         return UnityEngine.Vector3.Normalize(new UnityEngine.Vector3(dx, dy, dz));
     }
 
-    UnityEngine.Vector3 ComputeTransformedAB(UnityEngine.Matrix4x4 A, UnityEngine.Vector3 b)
-    {
-        // Initialize the augmented matrix
-        float[,] M = new float[4, 4];
-        for (int i = 0; i < 3; i++)
-        {
-            M[i, 0] = A[i, 0];
-            M[i, 1] = A[i, 1];
-            M[i, 2] = A[i, 2];
-            M[i, 3] = b[i];
-        }
-
-        // Apply Givens rotations
-        for (int col = 0; col < 3; col++)
-        {
-            for (int row = col + 1; row < 4; row++)
-            {
-                float a = M[col, col];
-                float B = M[row, col];
-                float r = Mathf.Sqrt(a * a + B * B);
-                float c = a / r;
-                float s = -B / r;
-
-                for (int k = 0; k < 4; k++) // Rotate columns
-                {
-                    float tempCol = c * M[col, k] - s * M[row, k];
-                    M[row, k] = s * M[col, k] + c * M[row, k];
-                    M[col, k] = tempCol;
-                }
-            }
-        }
-
-        // Extract results
-        UnityEngine.Matrix4x4 hatA = new UnityEngine.Matrix4x4();
-        UnityEngine.Vector3 hatB = new UnityEngine.Vector3();
-        float R = M[3, 3];
-
-        for (int i = 0; i < 3; i++)
-        {
-            hatA[i, 0] = M[i, 0];
-            hatA[i, 1] = M[i, 1];
-            hatA[i, 2] = M[i, 2];
-            hatB[i] = M[i, 3];
-        }
-
-        UnityEngine.Vector3 position = hatA * hatB;
-
-        return position;
-    }
+   
 
 
     void Start()
     {
-        int cnt = 0;
         for (int x = 0; x < gridSize; x++)
         {
             for (int y = 0; y < gridSize; y++)
@@ -122,6 +74,7 @@ public class SurfaceNets : MonoBehaviour
                         densities = new float[8],
                         edgeData = new Edge[12],
                         cornerPositions = new UnityEngine.Vector3[8]
+
                     };
 
                     for (int corner = 0; corner < 8; corner++)
@@ -156,16 +109,24 @@ public class SurfaceNets : MonoBehaviour
                     {
                         C = C / n;
                         Debug.Log("vertex position :\n" + C);
-                        surfacePoints.Add(C);
                         Instantiate(spherePrefab, C, UnityEngine.Quaternion.identity);
+
+                        grid[index].vertex = C;
                     }
 
                 }
             }
         }
+
+        ConstructMesh();
+
     }
 
 
+    void ConstructMesh()
+    {
+
+    }
 
     void initEdgeData(Voxel voxel)
     {

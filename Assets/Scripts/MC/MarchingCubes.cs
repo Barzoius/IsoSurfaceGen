@@ -1,36 +1,47 @@
-using System.Collections;
+using MC_LOGISTICS;
 using System.Collections.Generic;
 using UnityEngine;
-using MC_LOGISTICS;
 
 public class MarchingCubes : MonoBehaviour
 {
     public static int gridSize = 16;
     public static int voxelSize = 5;
 
+    public static float isosurface = 0f;
     public GameObject spherePrefab;
 
-
+    List<Vector3[]> triangles = new List<Vector3[]>();
 
     struct Voxel
     {
         public float[] densities;
-        public UnityEngine.Vector3[] cornerPositions;
+        public Vector3[] cornerPositions;
+        public int INDEX;
+        public List<Vector3> TRIANGLES;
     }
 
     Voxel[] grid = new Voxel[gridSize * gridSize * gridSize];
 
-
-    int flattenIndex(int x, int y, int z)
+    // Predefined corner offsets
+    private static readonly Vector3[] cornerOffsets = new Vector3[]
     {
-        return x * gridSize * gridSize + y * gridSize + z;
-    }
+        new Vector3(0, 0, 0),
+        new Vector3(1, 0, 0),
+        new Vector3(1, 1, 0),
+        new Vector3(0, 1, 0),
+        new Vector3(0, 0, 1),
+        new Vector3(1, 0, 1),
+        new Vector3(1, 1, 1),
+        new Vector3(0, 1, 1)
+    };
 
-    float sampleSDF(int x, int y, int z)
+    int FlattenIndex(int x, int y, int z) => x * gridSize * gridSize + y * gridSize + z;
+
+    float SampleSDF(Vector3 position)
     {
-        float radius = 40.0f; 
-        UnityEngine.Vector3 center = new UnityEngine.Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
-        return UnityEngine.Vector3.Distance(new UnityEngine.Vector3(x, y, z), center) - radius;
+        float radius = 20.0f;
+        Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
+        return Vector3.Distance(position, center) - radius;
     }
 
     void Start()
@@ -44,32 +55,89 @@ public class MarchingCubes : MonoBehaviour
                     Voxel voxel = new Voxel
                     {
                         densities = new float[8],
-
-                        cornerPositions = new UnityEngine.Vector3[8]
+                        cornerPositions = new Vector3[8],
+                        INDEX = 0,
+                        TRIANGLES = new List<Vector3>()
                     };
+
+                    // Base position of the voxel
+                    Vector3 basePos = new Vector3(x * voxelSize, y * voxelSize, z * voxelSize);
 
                     for (int corner = 0; corner < 8; corner++)
                     {
-                        int corner_x = x * voxelSize + (corner & 1) * voxelSize;
-                        int corner_y = y * voxelSize + ((corner >> 1) & 1) * voxelSize;
-                        int corner_z = z * voxelSize + ((corner >> 2) & 1) * voxelSize;
+                        Vector3 cornerPos = basePos + cornerOffsets[corner] * voxelSize;
+                        voxel.cornerPositions[corner] = cornerPos;
+                        voxel.densities[corner] = SampleSDF(cornerPos);
 
-                        voxel.cornerPositions[corner] = new UnityEngine.Vector3(corner_x, corner_y, corner_z);
-                        voxel.densities[corner] = sampleSDF(corner_x, corner_y, corner_z); ;
-
+                        if (voxel.densities[corner] < isosurface)
+                        {
+                            voxel.INDEX |= (1 << corner);
+                        }
                     }
 
-                    int index = flattenIndex(x, y, z);
+
+                    for (int i = 0; MC_DATA.triTable[voxel.INDEX, i] != -1; i += 3)
+                    {
+                        int a0 = MC_DATA.cornerIndexAFromEdge[MC_DATA.triTable[voxel.INDEX, i]];
+                        int b0 = MC_DATA.cornerIndexBFromEdge[MC_DATA.triTable[voxel.INDEX, i]];
+
+                        int a1 = MC_DATA.cornerIndexAFromEdge[MC_DATA.triTable[voxel.INDEX, i + 1]];
+                        int b1 = MC_DATA.cornerIndexBFromEdge[MC_DATA.triTable[voxel.INDEX, i + 1]];
+
+                        int a2 = MC_DATA.cornerIndexAFromEdge[MC_DATA.triTable[voxel.INDEX, i + 2]];
+                        int b2 = MC_DATA.cornerIndexBFromEdge[MC_DATA.triTable[voxel.INDEX, i + 2]];
+
+                        triangles.Add(new Vector3[]
+                        {
+                            VertexLerp(voxel.cornerPositions[a0], voxel.cornerPositions[b0], voxel.densities[a0], voxel.densities[b0]),
+                            VertexLerp(voxel.cornerPositions[a1], voxel.cornerPositions[b1], voxel.densities[a1], voxel.densities[b1]),
+                            VertexLerp(voxel.cornerPositions[a2], voxel.cornerPositions[b2], voxel.densities[a2], voxel.densities[b2])
+                        });
+                    }
+
+                    int index = FlattenIndex(x, y, z);
                     grid[index] = voxel;
                 }
-
             }
         }
+
+        GenerateMesh();
     }
 
-    // Update is called once per frame
-    void Update()
+    Vector3 VertexLerp(Vector3 p1, Vector3 p2, float v1, float v2)
     {
-
+        float t = (isosurface - v1) / (v2 - v1);
+        return p1 + t * (p2 - p1);
     }
+
+    void GenerateMesh()
+    {
+        Mesh mesh = new Mesh();
+        List<Vector3> vertices = new List<Vector3>();
+        List<int> indices = new List<int>();
+
+        foreach (var tri in triangles)
+        {
+            foreach (var vertex in tri)
+            {
+                vertices.Add(vertex);
+                indices.Add(vertices.Count - 1);
+            }
+        }
+
+        mesh.vertices = vertices.ToArray();
+        mesh.triangles = indices.ToArray();
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+
+        GameObject meshObject = new GameObject("Marching Cubes Mesh");
+        meshObject.transform.position = Vector3.zero;
+        MeshFilter meshFilter = meshObject.AddComponent<MeshFilter>();
+        MeshRenderer meshRenderer = meshObject.AddComponent<MeshRenderer>();
+
+        meshFilter.mesh = mesh;
+        meshRenderer.material = new Material(Shader.Find("Standard"));
+    }
+
+    void Update() { }
 }
