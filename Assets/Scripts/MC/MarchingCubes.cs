@@ -118,11 +118,14 @@ public class MarchingCubes : MonoBehaviour
 
         foreach (var tri in triangles)
         {
-            foreach (var vertex in tri)
-            {
-                vertices.Add(vertex);
-                indices.Add(vertices.Count - 1);
-            }
+            vertices.Add(tri[0]);
+            indices.Add(vertices.Count - 1);
+
+            vertices.Add(tri[2]); // Swap order of last two vertices
+            indices.Add(vertices.Count - 1);
+
+            vertices.Add(tri[1]);
+            indices.Add(vertices.Count - 1);
         }
 
         mesh.vertices = vertices.ToArray();
