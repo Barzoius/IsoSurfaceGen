@@ -336,7 +336,6 @@ GameObject:
   - component: {fileID: 1691979628}
   - component: {fileID: 1691979629}
   - component: {fileID: 1691979630}
-  - component: {fileID: 1691979631}
   m_Layer: 0
   m_Name: ALGORTIHM
   m_TagString: Untagged
@@ -398,14 +397,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   spherePrefab: {fileID: 8748670593503217581, guid: 468fcb455d3c4a440a29e85086d73eae, type: 3}
---- !u!33 &1691979631
-MeshFilter:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1691979626}
-  m_Mesh: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
