@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -61,13 +62,25 @@ public class SurfaceNets : MonoBehaviour
     {
         return x * gridSize * gridSize + y * gridSize + z;
     }
-
     float SampleSDF(Vector3 position)
     {
-        float radius = 20.0f;
         Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
-        return Vector3.Distance(position, center) - radius;
+        Vector3 halfSize = new Vector3(10.0f, 10.0f, 10.0f); // Cube with size 20x20x20
+
+        // Compute absolute value manually
+        Vector3 d = new Vector3(
+            MathF.Abs(position.x - center.x) - halfSize.x,
+            MathF.Abs(position.y - center.y) - halfSize.y,
+            MathF.Abs(position.z - center.z) - halfSize.z
+        );
+
+        // Compute SDF
+        float outsideDistance = MathF.Max(d.x, MathF.Max(d.y, d.z));
+        float insideDistance = MathF.Min(MathF.Max(d.x, MathF.Max(d.y, d.z)), 0.0f); // Negative if inside the cube
+
+        return outsideDistance + insideDistance; // Returns negative inside, zero on surface, positive outside
     }
+
 
     UnityEngine.Vector3 computeGradient(float x, float y, float z)
     {
@@ -200,8 +213,8 @@ public class SurfaceNets : MonoBehaviour
                     if (y + 1 < gridSize)
                     {
                         Vector3 v1 = grid[topIndex].vertex;
-                        int nextZ = flattenIndex(x, y + 1, z + 1);
-                        int nextY = flattenIndex(x, y, z + 1);
+                        int nextZ = flattenIndex(x + 1, y + 1, z);
+                        int nextY = flattenIndex(x + 1, y, z);
 
                         if (v1 != Vector3.zero && grid[nextZ].vertex != Vector3.zero && grid[nextY].vertex != Vector3.zero)
                         {
@@ -217,8 +230,8 @@ public class SurfaceNets : MonoBehaviour
                     if (z + 1 < gridSize)
                     {
                         Vector3 v1 = grid[frontIndex].vertex;
-                        int nextX = flattenIndex(x + 1, y, z + 1);
-                        int nextY = flattenIndex(x + 1, y, z);
+                        int nextX = flattenIndex(x, y + 1, z + 1);
+                        int nextY = flattenIndex(x , y + 1 , z);
 
                         if (v1 != Vector3.zero && grid[nextX].vertex != Vector3.zero && grid[nextY].vertex != Vector3.zero)
                         {
@@ -264,7 +277,7 @@ public class SurfaceNets : MonoBehaviour
         Mesh mesh = new Mesh();
         mesh.vertices = vertices.ToArray();
         mesh.triangles = triangles.ToArray();
-        mesh.RecalculateNormals();  
+        mesh.RecalculateNormals();
         mesh.RecalculateTangents();
 
         MeshFilter meshFilter = GetComponent<MeshFilter>();
@@ -275,7 +288,7 @@ public class SurfaceNets : MonoBehaviour
         if (!meshRenderer)
         {
             meshRenderer = gameObject.AddComponent<MeshRenderer>();
-            meshRenderer.material = new Material(Shader.Find("Standard"));
+            meshRenderer.material = new Material(Shader.Find("Custom/doubleSided"));
         }
 
         meshFilter.mesh = mesh;

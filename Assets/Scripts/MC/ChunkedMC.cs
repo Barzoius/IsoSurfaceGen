@@ -5,9 +5,9 @@ using UnityEngine;
 public class ChunkedMC : MonoBehaviour
 {
     public static int chunkSize = 16;
-    public static int voxelSize = 5;
+    public static int voxelSize = 4;
     public static float isosurface = 0f;
-    public GameObject terrainPrefab;
+    public GameObject spherePrefab;
 
     private Dictionary<Vector3Int, Chunk> chunks = new Dictionary<Vector3Int, Chunk>();
 
@@ -79,10 +79,10 @@ public class Chunk
     }
 
     public static int gridSize = 16;
-    public static int voxelSize = 5;
+    public static int voxelSize = 4;
     float SampleSDF(Vector3 position)
     {
-        float radius = 20.0f;
+        float radius = 30.0f;
         Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
         return Vector3.Distance(position, center) - radius;
     }
