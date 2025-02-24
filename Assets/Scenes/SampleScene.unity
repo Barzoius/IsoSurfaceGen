@@ -337,6 +337,7 @@ GameObject:
   - component: {fileID: 1691979629}
   - component: {fileID: 1691979630}
   - component: {fileID: 1691979631}
+  - component: {fileID: 1691979632}
   m_Layer: 0
   m_Name: ALGORTIHM
   m_TagString: Untagged
@@ -392,7 +393,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1691979626}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c40fa4c9bda8fdc4d94dbffd25f49d7a, type: 3}
   m_Name: 
@@ -411,6 +412,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   spherePrefab: {fileID: 0}
+--- !u!114 &1691979632
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1691979626}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 235f93d281015da46864e562eefdde6d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  spherePrefab: {fileID: 8748670593503217581, guid: 468fcb455d3c4a440a29e85086d73eae, type: 3}
+  octreeSize: 32
+  depth: 5
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

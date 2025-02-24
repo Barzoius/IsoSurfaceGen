@@ -171,6 +171,7 @@ public class SurfaceNets : MonoBehaviour
 
     void Polygonize()
     {
+
         for (int x = 0; x < gridSize - 1; x++)
         {
             for (int y = 0; y < gridSize - 1; y++)
