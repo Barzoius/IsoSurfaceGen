@@ -27,7 +27,13 @@ I chose the second method.
 
 ### 2. Evaluating our implicit surface at each voxel’s corners.
 
-|  |  |  |
+First, we evaluate the surface at each voxel's corner to see if it falls inside or outside the surface. Based on that, we create a binary index for each grid cell by concatenating the inside/outside classification of its eight corners in a fixed order.
+
+For a cube with corners labeled 7-6-5-4-3-2-1-0, each corner contributes a 1 if it is inside the surface and 0 if it is outside. This forms an 8-bit binary number, where the most significant bit corresponds to corner 7 and the least significant bit to corner 0.
+
+For example, if corners 7, 6, 5 and 4 are inside the surface, while the rest are outside, the binary index is 11110000(=240).
+
+| corner ordering | surface intersection | corner evaluation |
 |---|---|---|
 | ![](Assets/Imgs/voxel.png)  | ![](Assets/Imgs/voxelWithSurface.png)| ![](Assets/Imgs/weightedVoxel.png)  |
 

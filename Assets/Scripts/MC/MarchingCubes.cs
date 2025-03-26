@@ -37,11 +37,26 @@ public class MarchingCubes : MonoBehaviour
 
     int FlattenIndex(int x, int y, int z) => x * gridSize * gridSize + y * gridSize + z;
 
+    //float SampleSDF(Vector3 position)
+    //{
+    //    Vector2 t = new Vector2(30.0f, 10.0f); // major (30) / minor (10) radius 
+    //    Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
+
+    //    Vector3 p = position - center; 
+    //    Vector2 q = new Vector2(Vector3.Distance(new Vector3(p.x, p.y, 0), Vector3.zero) - t.x, p.z);
+
+    //    return q.magnitude - t.y;
+    //}
+
+
     float SampleSDF(Vector3 position)
     {
-        float radius = 20.0f;
-        Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
-        return Vector3.Distance(position, center) - radius;
+        float scale = 0.1f; // Adjust to control terrain frequency
+        float heightMultiplier = 10f; // Controls max terrain height
+
+        float height = Mathf.PerlinNoise(position.x * scale, position.z * scale) * heightMultiplier;
+
+        return position.y - height; // Everything below `height` is solid terrain
     }
 
     void Start()
@@ -143,4 +158,7 @@ public class MarchingCubes : MonoBehaviour
     }
 
     void Update() { }
+
+
+    
 }

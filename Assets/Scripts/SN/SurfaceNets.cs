@@ -62,23 +62,34 @@ public class SurfaceNets : MonoBehaviour
     {
         return x * gridSize * gridSize + y * gridSize + z;
     }
+    //float SampleSDF(Vector3 position)
+    //{
+    //    Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
+    //    Vector3 halfSize = new Vector3(10.0f, 10.0f, 10.0f); 
+
+    //    // Compute absolute value manually
+    //    Vector3 d = new Vector3(
+    //        MathF.Abs(position.x - center.x) - halfSize.x,
+    //        MathF.Abs(position.y - center.y) - halfSize.y,
+    //        MathF.Abs(position.z - center.z) - halfSize.z
+    //    );
+
+    //    // Compute SDF
+    //    float outsideDistance = MathF.Max(d.x, MathF.Max(d.y, d.z));
+    //    float insideDistance = MathF.Min(MathF.Max(d.x, MathF.Max(d.y, d.z)), 0.0f); // Negative if inside the cube
+
+    //    return outsideDistance + insideDistance; // Returns negative inside, zero on surface, positive outside
+    //}
+
     float SampleSDF(Vector3 position)
     {
+        Vector2 t = new Vector2(18.0f, 8.0f); // major (30) / minor (10) radius 
         Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
-        Vector3 halfSize = new Vector3(10.0f, 10.0f, 10.0f); // Cube with size 20x20x20
 
-        // Compute absolute value manually
-        Vector3 d = new Vector3(
-            MathF.Abs(position.x - center.x) - halfSize.x,
-            MathF.Abs(position.y - center.y) - halfSize.y,
-            MathF.Abs(position.z - center.z) - halfSize.z
-        );
+        Vector3 p = position - center;
+        Vector2 q = new Vector2(Vector3.Distance(new Vector3(p.x, p.y, 0), Vector3.zero) - t.x, p.z);
 
-        // Compute SDF
-        float outsideDistance = MathF.Max(d.x, MathF.Max(d.y, d.z));
-        float insideDistance = MathF.Min(MathF.Max(d.x, MathF.Max(d.y, d.z)), 0.0f); // Negative if inside the cube
-
-        return outsideDistance + insideDistance; // Returns negative inside, zero on surface, positive outside
+        return q.magnitude - t.y;
     }
 
 
