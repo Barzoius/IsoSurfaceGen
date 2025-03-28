@@ -1,12 +1,16 @@
+using Palmmedia.ReportGenerator.Core;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class InfWorld : MonoBehaviour
 {
-    public const float viewDist = 32;
+    public const float viewDist = 16;
     public Transform cam;
     public static Vector3 camPos;
+
+    [SerializeField]
+    private MeshGenerator algorithm;
 
     int chunkSize;
     int visibleChunks;
@@ -16,7 +20,7 @@ public class InfWorld : MonoBehaviour
 
     void Start()
     {
-        chunkSize = 32;
+        chunkSize = 16;
         visibleChunks = Mathf.RoundToInt(viewDist / chunkSize);
     }
 
@@ -46,7 +50,7 @@ public class InfWorld : MonoBehaviour
             {
                 for (int offx = -visibleChunks; offx <= visibleChunks; offx++)
                 {
-                    Vector3 chunkCoord = new Vector3(currentChunkX + offx, currentChunkY + offy, currentChunkZ + offz);
+                    Vector3 chunkCoord = new Vector3(currentChunkX + offx, 0, currentChunkZ + offz);
 
                     if(chunkDir.ContainsKey(chunkCoord))
                     {
@@ -59,37 +63,68 @@ public class InfWorld : MonoBehaviour
                     }
                     else
                     {
-                        chunkDir.Add(chunkCoord, new Chunk(chunkCoord, chunkSize));
+                        chunkDir.Add(chunkCoord, new Chunk(chunkCoord, chunkSize, algorithm));
                     }
                 }
             }
         }
 
 
+
+    }
+
+    void OnDrawGizmos()
+    {
+        Gizmos.color = Color.green;
+
+        foreach (var chunk in chunkDir.Values)
+        {
+            Gizmos.DrawWireCube(chunk.pos, Vector3.one * chunkSize);
+           
+        }
     }
 
 
     public class Chunk
     {
-        public Vector3 center;
+        public Vector3 pos;
         public float size;
         public Vector3Int id;
 
         GameObject meshOBJ;
 
+        Mesh chunkMesh;
         Bounds bounds;
 
-        public Chunk(Vector3 coord, float csize)
+
+        private MeshGenerator meshGenerator;
+        public Chunk(Vector3 coord, float csize, MeshGenerator generator)
         {
             size = csize;
-            center = coord * size;
+            pos = coord * size;
 
-            bounds = new Bounds(center, Vector3.one * size);
+            meshGenerator = generator;
 
-            meshOBJ = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            meshOBJ.transform.position = center;
-            meshOBJ.transform.localScale = Vector3.one * size / 10f;
+            bounds = new Bounds(pos, Vector3.one * size);
+  
 
+            chunkMesh = meshGenerator.ConstructMesh(pos, size, 1);
+         
+
+            //meshOBJ = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            meshOBJ = new GameObject("Chunk " + coord);
+            meshOBJ.transform.position = pos - new Vector3(size / 2f, size / 2f, size / 2f);
+            //meshOBJ.transform.localScale = Vector3.one * size/10f;
+
+
+            MeshFilter meshFilter = meshOBJ.AddComponent<MeshFilter>();
+            MeshRenderer meshRenderer = meshOBJ.AddComponent<MeshRenderer>();
+
+            meshFilter.mesh = chunkMesh;
+
+
+            //meshRenderer.material = new Material(Shader.Find("Standard"));
+            meshRenderer.material = new Material(Shader.Find("Custom/doubleSided"));
             meshOBJ.SetActive(false);
         }
 
@@ -113,16 +148,8 @@ public class InfWorld : MonoBehaviour
             return meshOBJ.activeSelf;
         }
     
-        public void BuildMesh()
-        {
 
-        }
 
-        public void DrawBoundsGizmo(Color col)
-        {
-            Gizmos.color = col;
-            Gizmos.DrawWireCube(center, Vector3.one * size);
-        }
 
     }
 

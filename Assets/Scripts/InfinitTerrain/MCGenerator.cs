@@ -1,14 +1,18 @@
-using MC_LOGISTICS;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class MarchingCubes : MonoBehaviour
+
+using MC_LOGISTICS;
+
+[CreateAssetMenu(fileName = "MarchingCubesGenerator", menuName = "MeshGenerators/MarchingCubes")]
+public class MCGenerator : MeshGenerator
 {
-    public static int gridSize = 64;
-    public static int voxelSize = 4;
+
+    public static int gridSize;
+    public static int voxelSize;
 
     public static float isosurface = 0f;
-    public GameObject spherePrefab;
 
     List<Vector3[]> triangles = new List<Vector3[]>();
 
@@ -21,9 +25,7 @@ public class MarchingCubes : MonoBehaviour
     }
 
 
-    Voxel[] grid = new Voxel[gridSize * gridSize * gridSize];
-
-
+    Voxel[] grid;
 
     // Predefined corner offsets
     private static readonly Vector3[] cornerOffsets = new Vector3[]
@@ -42,28 +44,39 @@ public class MarchingCubes : MonoBehaviour
 
     //float SampleSDF(Vector3 position)
     //{
-    //    Vector2 t = new Vector2(30.0f, 10.0f); // major (30) / minor (10) radius 
-    //    Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
+    //    float scale = 0.1f;
+    //    float heightMultiplier = 20f; //  max height
 
-    //    Vector3 p = position - center; 
-    //    Vector2 q = new Vector2(Vector3.Distance(new Vector3(p.x, p.y, 0), Vector3.zero) - t.x, p.z);
+    //    float height = Mathf.PerlinNoise(position.x * scale, position.z * scale) * heightMultiplier;
 
-    //    return q.magnitude - t.y;
+    //    return position.y - height;
     //}
-
 
     float SampleSDF(Vector3 position)
     {
-        float scale = 0.1f; 
-        float heightMultiplier = 20f; // max terrain height
+        Vector2 t = new Vector2(5.0f, 2.0f); // major (30) / minor (10) radius 
+        Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
 
-        float height = Mathf.PerlinNoise(position.x * scale, position.z * scale) * heightMultiplier;
+        Vector3 p = position - center;
+        Vector2 q = new Vector2(Vector3.Distance(new Vector3(p.x, p.y, 0), Vector3.zero) - t.x, p.z);
 
-        return position.y - height; // everything below `height` is solid terrain
+        return q.magnitude - t.y;
     }
 
-    void Start()
+    //float SampleSDF(Vector3 position, float height = 1)
+    //{
+    //    return position.y - height;
+    //}
+
+    Vector3 VertexLerp(Vector3 p1, Vector3 p2, float v1, float v2)
     {
+        float t = (isosurface - v1) / (v2 - v1);
+        return p1 + t * (p2 - p1);
+    }
+
+    void March(Vector3 position)
+    {
+ 
         for (int x = 0; x < gridSize; x++)
         {
             for (int y = 0; y < gridSize; y++)
@@ -79,8 +92,9 @@ public class MarchingCubes : MonoBehaviour
                     };
 
                     // Base position of the voxel
-                    Vector3 basePos = new Vector3(x * voxelSize, y * voxelSize, z * voxelSize);
+                    Vector3 basePos = new Vector3(x, y, z) * voxelSize;
 
+                 
                     for (int corner = 0; corner < 8; corner++)
                     {
                         Vector3 cornerPos = basePos + cornerOffsets[corner] * voxelSize;
@@ -93,7 +107,7 @@ public class MarchingCubes : MonoBehaviour
                         }
                     }
 
-
+                 
                     for (int i = 0; MC_DATA.triTable[voxel.INDEX, i] != -1; i += 3)
                     {
                         int a0 = MC_DATA.cornerIndexAFromEdge[MC_DATA.triTable[voxel.INDEX, i]];
@@ -112,25 +126,28 @@ public class MarchingCubes : MonoBehaviour
                             VertexLerp(voxel.cornerPositions[a2], voxel.cornerPositions[b2], voxel.densities[a2], voxel.densities[b2])
                         });
                     }
-
+                
                     int index = FlattenIndex(x, y, z);
                     grid[index] = voxel;
+
                 }
             }
         }
-
-        GenerateMesh();
     }
 
-    Vector3 VertexLerp(Vector3 p1, Vector3 p2, float v1, float v2)
-    {
-        float t = (isosurface - v1) / (v2 - v1);
-        return p1 + t * (p2 - p1);
-    }
 
-    void GenerateMesh()
+    public override Mesh ConstructMesh(Vector3 position, float size, int pvoxelSize)
     {
+        gridSize = (int)size;
+        voxelSize = pvoxelSize;
         Mesh mesh = new Mesh();
+
+        triangles.Clear();
+
+        grid = new Voxel[gridSize * gridSize * gridSize];
+
+        March(position);
+
         List<Vector3> vertices = new List<Vector3>();
         List<int> indices = new List<int>();
 
@@ -139,7 +156,7 @@ public class MarchingCubes : MonoBehaviour
             vertices.Add(tri[0]);
             indices.Add(vertices.Count - 1);
 
-            vertices.Add(tri[2]); // Swap order of last two vertices
+            vertices.Add(tri[2]); // swap order of last two vertices
             indices.Add(vertices.Count - 1);
 
             vertices.Add(tri[1]);
@@ -149,19 +166,14 @@ public class MarchingCubes : MonoBehaviour
         mesh.vertices = vertices.ToArray();
         mesh.triangles = indices.ToArray();
         mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
+        //mesh.RecalculateBounds();
 
-        GameObject meshObject = new GameObject("Marching Cubes Mesh");
-        meshObject.transform.position = Vector3.zero;
-        MeshFilter meshFilter = meshObject.AddComponent<MeshFilter>();
-        MeshRenderer meshRenderer = meshObject.AddComponent<MeshRenderer>();
+        if (vertices.Count == 0)
+        {
+            Debug.LogWarning($"Mesh at {position} has NO vertices!");
+            return mesh;
+        }
 
-        meshFilter.mesh = mesh;
-        meshRenderer.material = new Material(Shader.Find("Standard"));
+        return mesh;
     }
-
-    void Update() { }
-
-
-    
 }

@@ -1,15 +1,14 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 using UnityEngine;
-using UnityEngine.UIElements;
 
-public class SurfaceNets : MonoBehaviour
+[CreateAssetMenu(fileName = "SurfaceNetsGenerator", menuName = "MeshGenerators/SurfaceNets")]
+public class SMGenerator : MeshGenerator
 {
-    public static int gridSize = 32;
-    public static int voxelSize = 4;
 
-    public GameObject spherePrefab;
+    public static int gridSize;
+    public static int voxelSize;
 
     private List<Vector3> VertexBuffer = new List<Vector3>();
     private List<int> TriangleBuffer = new List<int>();
@@ -63,56 +62,35 @@ public class SurfaceNets : MonoBehaviour
         return x * gridSize * gridSize + y * gridSize + z;
     }
 
-    float CubeSDF(Vector3 position)
-    {
-        Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
-        Vector3 halfSize = new Vector3(10.0f, 10.0f, 10.0f);
-
-
-        Vector3 d = new Vector3(
-            MathF.Abs(position.x - center.x) - halfSize.x,
-            MathF.Abs(position.y - center.y) - halfSize.y,
-            MathF.Abs(position.z - center.z) - halfSize.z
-        );
-
-        // Cube SDF
-        float outsideDistanceCube = MathF.Max(d.x, MathF.Max(d.y, d.z));
-        float insideDistanceCube = MathF.Min(MathF.Max(d.x, MathF.Max(d.y, d.z)), 0.0f);
-        float cubeSDF = outsideDistanceCube + insideDistanceCube;
-
-
-        return cubeSDF;
-
-    }
-
-    //float SampleSDF(Vector3 position) // TORUS
+    //float SampleSDF(Vector3 position)
     //{
-    //    Vector2 t = new Vector2(18.0f, 8.0f); // major (30) / minor (10) radius 
-    //    Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
+    //    float scale = 0.1f;
+    //    float heightMultiplier = 20f; //  max height
 
-    //    Vector3 p = position - center;
-    //    Vector2 q = new Vector2(Vector3.Distance(new Vector3(p.x, p.y, 0), Vector3.zero) - t.x, p.z);
+    //    float height = Mathf.PerlinNoise(position.x * scale, position.z * scale) * heightMultiplier;
 
-    //    return q.magnitude - t.y;
+    //    return position.y - height;
     //}
-
-    float SphereSDF(Vector3 position)
-    {
-        float radius = 10.0f;
-        Vector3 center = new Vector3(gridSize * voxelSize / 2, (gridSize * voxelSize / 2), gridSize * voxelSize / 2);
-        return Vector3.Distance(position, center) - radius;
-
-    }
-
 
     float SampleSDF(Vector3 position)
     {
-        return MathF.Max(CubeSDF(position), -SphereSDF(position));
-        
+        Vector2 t = new Vector2(5.0f, 2.0f); // major (30) / minor (10) radius 
+        Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
+
+        Vector3 p = position - center;
+        Vector2 q = new Vector2(Vector3.Distance(new Vector3(p.x, p.y, 0), Vector3.zero) - t.x, p.z);
+
+        return q.magnitude - t.y;
     }
 
 
-        UnityEngine.Vector3 computeGradient(float x, float y, float z)
+
+    //float SampleSDF(Vector3 position, float height = 1)
+    //{
+    //    return position.y - height;
+    //}
+
+    UnityEngine.Vector3 computeGradient(float x, float y, float z)
     {
         float epsilon = 0.01f;
         float dx = SampleSDF(new Vector3((int)(x + epsilon), (int)y, (int)z)) - SampleSDF(new Vector3((int)(x - epsilon), (int)y, (int)z));
@@ -124,9 +102,44 @@ public class SurfaceNets : MonoBehaviour
     }
 
 
+    void initEdgeData(Voxel voxel)
+    {
+        for (int i = 0; i < 12; i++)
+        {
+            int vertex1 = edges[i, 0];
+            int vertex2 = edges[i, 1];
 
+            float sampleV1 = voxel.densities[vertex1];
+            float sampleV2 = voxel.densities[vertex2];
 
-    void Start()
+            if (Mathf.Abs(sampleV1 - sampleV2) > 0.0001f && (sampleV1 < 0) != (sampleV2 < 0))
+            {
+                float t = sampleV1 / (sampleV1 - sampleV2);
+
+                UnityEngine.Vector3 intersectionPoint =
+                    UnityEngine.Vector3.Lerp(voxel.cornerPositions[vertex1],
+                                                 voxel.cornerPositions[vertex2], t);
+
+                UnityEngine.Vector3 normal = computeGradient(intersectionPoint.x, intersectionPoint.y, intersectionPoint.z);
+
+                voxel.edgeData[i] = new Edge
+                {
+                    intersection = intersectionPoint,
+                    normal = normal,
+                    crossed = true
+                };
+            }
+            else
+            {
+                voxel.edgeData[i] = new Edge
+                {
+                    crossed = false
+                };
+            }
+        }
+    }
+
+    void InitGridDat()
     {
         for (int x = 0; x < gridSize; x++)
         {
@@ -183,7 +196,7 @@ public class SurfaceNets : MonoBehaviour
                         C = C / n;
                         grid[index].vertex = new Vector3(C.x, C.y, C.z);
                         //Debug.Log("vertex position :\n" + C);
-                        Instantiate(spherePrefab, C, UnityEngine.Quaternion.identity);
+                        //Instantiate(spherePrefab, C, UnityEngine.Quaternion.identity);
                     }
                     else
                     {
@@ -195,13 +208,9 @@ public class SurfaceNets : MonoBehaviour
                 }
             }
         }
-
-        Polygonize();
     }
-
-    void Polygonize()
+    void SurfaceNets(Vector3 position)
     {
-
         for (int x = 0; x < gridSize - 1; x++)
         {
             for (int y = 0; y < gridSize - 1; y++)
@@ -236,7 +245,7 @@ public class SurfaceNets : MonoBehaviour
                         }
                         else
                         {
-                            Debug.Log($"[Missing Quad] Skipped at ({x},{y},{z}) due to missing vertex v1");
+                            //Debug.Log($"[Missing Quad] Skipped at ({x},{y},{z}) due to missing vertex v1");
                         }
                     }
 
@@ -253,7 +262,7 @@ public class SurfaceNets : MonoBehaviour
                         }
                         else
                         {
-                            Debug.Log($"[Missing Quad] Skipped at ({x},{y},{z}) due to missing vertex v2");
+                            //Debug.Log($"[Missing Quad] Skipped at ({x},{y},{z}) due to missing vertex v2");
                         }
                     }
 
@@ -262,7 +271,7 @@ public class SurfaceNets : MonoBehaviour
                     {
                         Vector3 v1 = grid[frontIndex].vertex;
                         int nextX = flattenIndex(x, y + 1, z + 1);
-                        int nextY = flattenIndex(x , y + 1 , z);
+                        int nextY = flattenIndex(x, y + 1, z);
 
                         if (v1 != Vector3.zero && grid[nextX].vertex != Vector3.zero && grid[nextY].vertex != Vector3.zero)
                         {
@@ -270,17 +279,14 @@ public class SurfaceNets : MonoBehaviour
                         }
                         else
                         {
-                            Debug.Log($"[Missing Quad] Skipped at ({x},{y},{z}) due to missing vertex v3");
+                            //Debug.Log($"[Missing Quad] Skipped at ({x},{y},{z}) due to missing vertex v3");
                         }
                     }
                 }
             }
         }
 
-        GenerateMesh(VertexBuffer, TriangleBuffer);
     }
-
-
 
     public void AddQuad(Vector3 v0, Vector3 v1, Vector3 v2, Vector3 v3)
     {
@@ -303,71 +309,27 @@ public class SurfaceNets : MonoBehaviour
 
     }
 
-    void GenerateMesh(List<Vector3> vertices, List<int> triangles)
+
+    public override Mesh ConstructMesh(Vector3 position, float size, int pvoxelSize)
     {
+        gridSize = (int)size;
+        voxelSize = pvoxelSize;
         Mesh mesh = new Mesh();
-        mesh.vertices = vertices.ToArray();
-        mesh.triangles = triangles.ToArray();
+
+        VertexBuffer.Clear();
+        TriangleBuffer.Clear();
+
+        grid = new Voxel[gridSize * gridSize * gridSize];
+
+        SurfaceNets(position);
+
+        mesh.vertices = VertexBuffer.ToArray();
+        mesh.triangles = TriangleBuffer.ToArray();
         mesh.RecalculateNormals();
         mesh.RecalculateTangents();
 
-        MeshFilter meshFilter = GetComponent<MeshFilter>();
-        if (!meshFilter)
-            meshFilter = gameObject.AddComponent<MeshFilter>();
-
-        MeshRenderer meshRenderer = GetComponent<MeshRenderer>();
-        if (!meshRenderer)
-        {
-            meshRenderer = gameObject.AddComponent<MeshRenderer>();
-            meshRenderer.material = new Material(Shader.Find("Custom/doubleSided"));
-        }
-
-        meshFilter.mesh = mesh;
+       
+       
+        return mesh;
     }
-
-
-
-    void initEdgeData(Voxel voxel)
-    {
-        for (int i = 0; i < 12; i++)
-        {
-            int vertex1 = edges[i, 0];
-            int vertex2 = edges[i, 1];
-
-            float sampleV1 = voxel.densities[vertex1];
-            float sampleV2 = voxel.densities[vertex2];
-
-            if (Mathf.Abs(sampleV1 - sampleV2) > 0.0001f && (sampleV1 < 0) != (sampleV2 < 0))
-            {
-                float t = sampleV1 / (sampleV1 - sampleV2);
-
-                UnityEngine.Vector3 intersectionPoint =
-                    UnityEngine.Vector3.Lerp(voxel.cornerPositions[vertex1],
-                                                 voxel.cornerPositions[vertex2], t);
-
-                UnityEngine.Vector3 normal = computeGradient(intersectionPoint.x, intersectionPoint.y, intersectionPoint.z);
-
-                voxel.edgeData[i] = new Edge
-                {
-                    intersection = intersectionPoint,
-                    normal = normal,
-                    crossed = true
-                };
-            }
-            else
-            {
-                voxel.edgeData[i] = new Edge
-                {
-                    crossed = false
-                };
-            }
-        }
-    }
-
-
-    void Update()
-    {
-
-    }
-
 }
