@@ -5,8 +5,8 @@ using static InfWorld;
 
 public class ChunkedMesh : MonoBehaviour
 {
-
-    int numChunks = 3;
+    
+    public int numChunks = 3;
     MeshChunk[] chunks;
     float chunkSize;
 
@@ -19,10 +19,10 @@ public class ChunkedMesh : MonoBehaviour
     {
         InitChunks();
 
-        //for(int i = 0; i < chunks.Length; i++)
-        //{
-        //    chunks[i].BuildMesh();
-        //}
+        for (int i = 0; i < chunks.Length; i++)
+        {
+            chunks[i].BuildMesh();
+        }
     }
 
     
@@ -54,7 +54,7 @@ public class ChunkedMesh : MonoBehaviour
 
                     Vector3 centre = new Vector3(posX, posY, posZ);
 
-                    MeshChunk chunk = new MeshChunk(coord, centre, chunkSize, algorithm);
+                    MeshChunk chunk = new MeshChunk(coord, coord, chunkSize, algorithm);
 
                     chunks[i] = chunk;
                     i++;

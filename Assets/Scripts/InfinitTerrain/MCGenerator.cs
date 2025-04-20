@@ -52,21 +52,21 @@ public class MCGenerator : MeshGenerator
     //    return position.y - height;
     //}
 
-    float SampleSDF(Vector3 position)
-    {
-        Vector2 t = new Vector2(5.0f, 2.0f); // major (30) / minor (10) radius 
-        Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
-
-        Vector3 p = position - center;
-        Vector2 q = new Vector2(Vector3.Distance(new Vector3(p.x, p.y, 0), Vector3.zero) - t.x, p.z);
-
-        return q.magnitude - t.y;
-    }
-
-    //float SampleSDF(Vector3 position, float height = 1)
+    //float SampleSDF(Vector3 position)
     //{
-    //    return position.y - height;
+    //    Vector2 t = new Vector2(5.0f, 2.0f); // major (30) / minor (10) radius 
+    //    Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
+
+    //    Vector3 p = position - center;
+    //    Vector2 q = new Vector2(Vector3.Distance(new Vector3(p.x, p.y, 0), Vector3.zero) - t.x, p.z);
+
+    //    return q.magnitude - t.y;
     //}
+
+    float SampleSDF(Vector3 position, float height = 1)
+    {
+        return position.y - height;
+    }
 
     Vector3 VertexLerp(Vector3 p1, Vector3 p2, float v1, float v2)
     {

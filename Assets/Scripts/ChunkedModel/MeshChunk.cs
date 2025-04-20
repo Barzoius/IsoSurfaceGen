@@ -30,7 +30,7 @@ public class MeshChunk
         mesh = algorithm.ConstructMesh(ID, chunkSize, 1);
 
         meshOBJ = new GameObject("Chunk " + coord);
-        //meshOBJ.transform.position = coord - new Vector3(size / 2f, size / 2f, size / 2f);
+        meshOBJ.transform.position = coord - new Vector3(size / 2f, size / 2f, size / 2f);
 
 
         MeshFilter meshFilter = meshOBJ.AddComponent<MeshFilter>();
