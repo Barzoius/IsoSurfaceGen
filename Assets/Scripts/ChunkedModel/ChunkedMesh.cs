@@ -6,7 +6,7 @@ using static InfWorld;
 public class ChunkedMesh : MonoBehaviour
 {
     
-    public int numChunks = 3;
+    public int numChunks = 4;
     MeshChunk[] chunks;
     float chunkSize;
 

@@ -5,7 +5,7 @@ using UnityEngine;
 
 public class InfWorld : MonoBehaviour
 {
-    public const float viewDist = 16;
+    public const float viewDist = 32;
     public Transform cam;
     public static Vector3 camPos;
 
@@ -79,7 +79,8 @@ public class InfWorld : MonoBehaviour
 
         foreach (var chunk in chunkDir.Values)
         {
-            Gizmos.DrawWireCube(chunk.pos, Vector3.one * chunkSize);
+            Gizmos.DrawWireCube(chunk.pos , Vector3.one * chunkSize);
+            Debug.Log(chunk.pos);
            
         }
     }
@@ -87,7 +88,7 @@ public class InfWorld : MonoBehaviour
 
     public class Chunk
     {
-        public Vector3 pos;
+        public Vector3 pos; // center
         public float size;
         public Vector3Int id;
 
@@ -112,8 +113,10 @@ public class InfWorld : MonoBehaviour
          
 
             //meshOBJ = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            meshOBJ = new GameObject("Chunk " + coord);
-            meshOBJ.transform.position = pos - new Vector3(size / 2f, size / 2f, size / 2f);
+            meshOBJ = new GameObject("Chunk " + pos);
+
+            meshOBJ.transform.position = Vector3.zero;
+
             //meshOBJ.transform.localScale = Vector3.one * size/10f;
 
 
@@ -123,8 +126,8 @@ public class InfWorld : MonoBehaviour
             meshFilter.mesh = chunkMesh;
 
 
-            //meshRenderer.material = new Material(Shader.Find("Standard"));
-            meshRenderer.material = new Material(Shader.Find("Custom/doubleSided"));
+            meshRenderer.material = new Material(Shader.Find("Standard"));
+            //meshRenderer.material = new Material(Shader.Find("Custom/doubleSided"));
             meshOBJ.SetActive(false);
         }
 

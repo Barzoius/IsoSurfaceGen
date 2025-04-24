@@ -10,7 +10,7 @@ public class MCGenerator : MeshGenerator
 {
 
     public static int gridSize;
-    public static int voxelSize;
+    public static int voxelSize = 1;
 
     public static float isosurface = 0f;
 
@@ -23,6 +23,7 @@ public class MCGenerator : MeshGenerator
         public int INDEX;
         public List<Vector3> TRIANGLES;
     }
+
 
 
     Voxel[] grid;
@@ -42,29 +43,13 @@ public class MCGenerator : MeshGenerator
 
     int FlattenIndex(int x, int y, int z) => x * gridSize * gridSize + y * gridSize + z;
 
-    //float SampleSDF(Vector3 position)
-    //{
-    //    float scale = 0.1f;
-    //    float heightMultiplier = 20f; //  max height
-
-    //    float height = Mathf.PerlinNoise(position.x * scale, position.z * scale) * heightMultiplier;
-
-    //    return position.y - height;
-    //}
-
-    //float SampleSDF(Vector3 position)
-    //{
-    //    Vector2 t = new Vector2(5.0f, 2.0f); // major (30) / minor (10) radius 
-    //    Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
-
-    //    Vector3 p = position - center;
-    //    Vector2 q = new Vector2(Vector3.Distance(new Vector3(p.x, p.y, 0), Vector3.zero) - t.x, p.z);
-
-    //    return q.magnitude - t.y;
-    //}
-
-    float SampleSDF(Vector3 position, float height = 1)
+    float SampleSDF(Vector3 position)
     {
+        float scale = 0.2f;
+        float heightMultiplier = 10f; //  max height
+
+        float height = Mathf.PerlinNoise(position.x * scale, position.z * scale) * heightMultiplier;
+
         return position.y - height;
     }
 
@@ -92,9 +77,10 @@ public class MCGenerator : MeshGenerator
                     };
 
                     // Base position of the voxel
-                    Vector3 basePos = new Vector3(x, y, z) * voxelSize;
+                    //Vector3 basePos = new Vector3(x, y, z) * voxelSize;
+                    Vector3 basePos = position + new Vector3(x, y, z);
 
-                 
+
                     for (int corner = 0; corner < 8; corner++)
                     {
                         Vector3 cornerPos = basePos + cornerOffsets[corner] * voxelSize;
@@ -167,6 +153,7 @@ public class MCGenerator : MeshGenerator
         mesh.triangles = indices.ToArray();
         mesh.RecalculateNormals();
         //mesh.RecalculateBounds();
+   
 
         if (vertices.Count == 0)
         {
