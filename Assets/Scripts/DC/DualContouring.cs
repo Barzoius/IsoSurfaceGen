@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -6,9 +7,12 @@ using UnityEngine.UIElements;
 public class DualContouring : MonoBehaviour
 {
     public static int gridSize = 16;
-    public static int voxelSize = 5;
+    public static int voxelSize = 4;
 
     public GameObject spherePrefab;
+
+    private List<Vector3> VertexBuffer = new List<Vector3>();
+    private List<int> TriangleBuffer = new List<int>();
 
     struct Edge
     {
@@ -22,93 +26,97 @@ public class DualContouring : MonoBehaviour
         public float[] densities;
         public UnityEngine.Vector3[] cornerPositions;
         public Edge[] edgeData;
+
+        public int INDEX;
+
+        public Vector3 vertex;
     }
 
     public int[,] edges = new int[12, 2]
     {
-        {0, 1}, {1, 2}, {2, 3}, {3, 0}, // Bottom edges
-        {4, 5}, {5, 6}, {6, 7}, {7, 4}, // Top edges
-        {0, 4}, {1, 5}, {2, 6}, {3, 7}  // Side edges
+            {0,4},{1,5},{2,6},{3,7},	// x-axis 
+			{0,2},{1,3},{4,6},{5,7},	// y-axis
+			{0,1},{2,3},{4,5},{6,7}		// z-axis
     };
 
     Voxel[] grid = new Voxel[gridSize * gridSize * gridSize];
+
+
+    // Predefined corner offsets
+    private static readonly Vector3[] cornerOffsets = new Vector3[]
+    {
+        new Vector3(0, 0, 0),
+        new Vector3(1, 0, 0),
+        new Vector3(1, 1, 0),
+        new Vector3(0, 1, 0),
+        new Vector3(0, 0, 1),
+        new Vector3(1, 0, 1),
+        new Vector3(1, 1, 1),
+        new Vector3(0, 1, 1)
+    };
+
+
+    int[,] directions = { { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 } };
 
     int flattenIndex(int x, int y, int z)
     {
         return x * gridSize * gridSize + y * gridSize + z;
     }
 
-    float sampleSDF(int x, int y, int z)
+    float CubeSDF(Vector3 position)
     {
-        float radius = 20.0f; 
-        UnityEngine.Vector3 center = new UnityEngine.Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
-        return UnityEngine.Vector3.Distance(new UnityEngine.Vector3(x, y, z), center) - radius;
+        Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
+        Vector3 halfSize = new Vector3(10.0f, 10.0f, 10.0f);
+
+
+        Vector3 d = new Vector3(
+            MathF.Abs(position.x - center.x) - halfSize.x,
+            MathF.Abs(position.y - center.y) - halfSize.y,
+            MathF.Abs(position.z - center.z) - halfSize.z
+        );
+
+        // Cube SDF
+        float outsideDistanceCube = MathF.Max(d.x, MathF.Max(d.y, d.z));
+        float insideDistanceCube = MathF.Min(MathF.Max(d.x, MathF.Max(d.y, d.z)), 0.0f);
+        float cubeSDF = outsideDistanceCube + insideDistanceCube;
+
+
+        return cubeSDF;
+
     }
+
+    float SphereSDF(Vector3 position)
+    {
+        float radius = 10.0f;
+        Vector3 center = new Vector3(gridSize * voxelSize / 2, (gridSize * voxelSize / 2), gridSize * voxelSize / 2);
+        return Vector3.Distance(position, center) - radius;
+
+    }
+
+
+    float SampleSDF(Vector3 position)
+    {
+        return MathF.Max(CubeSDF(position), -SphereSDF(position));
+
+    }
+
 
     UnityEngine.Vector3 computeGradient(float x, float y, float z)
     {
         float epsilon = 0.01f;
-        float dx = sampleSDF((int)(x + epsilon), (int)y, (int)z) - sampleSDF((int)(x - epsilon), (int)y, (int)z);
-        float dy = sampleSDF((int)x, (int)(y + epsilon), (int)z) - sampleSDF((int)x, (int)(y - epsilon), (int)z);
-        float dz = sampleSDF((int)x, (int)y, (int)(z + epsilon)) - sampleSDF((int)x, (int)y, (int)(z - epsilon));
+        float dx = SampleSDF(new Vector3((int)(x + epsilon), (int)y, (int)z)) - SampleSDF(new Vector3((int)(x - epsilon), (int)y, (int)z));
+        float dy = SampleSDF(new Vector3((int)x, (int)(y + epsilon), (int)z)) - SampleSDF(new Vector3((int)x, (int)(y - epsilon), (int)z));
+        float dz = SampleSDF(new Vector3((int)x, (int)y, (int)(z + epsilon))) - SampleSDF(new Vector3((int)x, (int)y, (int)(z - epsilon)));
+
 
         return UnityEngine.Vector3.Normalize(new UnityEngine.Vector3(dx, dy, dz));
     }
 
-    UnityEngine.Vector3 ComputeTransformedAB(UnityEngine.Matrix4x4 A, UnityEngine.Vector3 b)
-    {
-        // Initialize the augmented matrix
-        float[,] M = new float[4, 4];
-        for (int i = 0; i < 3; i++)
-        {
-            M[i, 0] = A[i, 0];
-            M[i, 1] = A[i, 1];
-            M[i, 2] = A[i, 2];
-            M[i, 3] = b[i];
-        }
 
-        // Apply Givens rotations
-        for (int col = 0; col < 3; col++)
-        {
-            for (int row = col + 1; row < 4; row++)
-            {
-                float a = M[col, col];
-                float B = M[row, col];
-                float r = Mathf.Sqrt(a * a + B * B);
-                float c = a / r;
-                float s = -B / r;
-
-                for (int k = 0; k < 4; k++) // Rotate columns
-                {
-                    float tempCol = c * M[col, k] - s * M[row, k];
-                    M[row, k] = s * M[col, k] + c * M[row, k];
-                    M[col, k] = tempCol;
-                }
-            }
-        }
-
-        // Extract results
-        UnityEngine.Matrix4x4 hatA = new UnityEngine.Matrix4x4();
-        UnityEngine.Vector3 hatB = new UnityEngine.Vector3();
-        float R = M[3, 3];
-
-        for (int i = 0; i < 3; i++)
-        {
-            hatA[i, 0] = M[i, 0];
-            hatA[i, 1] = M[i, 1];
-            hatA[i, 2] = M[i, 2];
-            hatB[i] = M[i, 3];
-        }
-
-        UnityEngine.Vector3 position = hatA * hatB;
-
-        return position;
-    }
 
 
     void Start()
     {
-
         for (int x = 0; x < gridSize; x++)
         {
             for (int y = 0; y < gridSize; y++)
@@ -119,164 +127,190 @@ public class DualContouring : MonoBehaviour
                     {
                         densities = new float[8],
                         edgeData = new Edge[12],
-                        cornerPositions = new UnityEngine.Vector3[8]
+                        cornerPositions = new UnityEngine.Vector3[8],
+                        INDEX = 0,
+                        vertex = Vector3.zero
                     };
+
+
+                    // Base position of the voxel
+                    Vector3 basePos = new Vector3(x * voxelSize, y * voxelSize, z * voxelSize);
 
                     for (int corner = 0; corner < 8; corner++)
                     {
-                        int corner_x = x * voxelSize + (corner & 1) * voxelSize;
-                        int corner_y = y * voxelSize + ((corner >> 1) & 1) * voxelSize;
-                        int corner_z = z * voxelSize + ((corner >> 2) & 1) * voxelSize;
+                        Vector3 cornerPos = basePos + cornerOffsets[corner] * voxelSize;
+                        voxel.cornerPositions[corner] = cornerPos;
+                        voxel.densities[corner] = SampleSDF(cornerPos);
 
-                        voxel.cornerPositions[corner] = new UnityEngine.Vector3(corner_x, corner_y, corner_z);
-                        voxel.densities[corner] = sampleSDF(corner_x, corner_y, corner_z);
+
+                        if (voxel.densities[corner] < 0f)
+                        {
+                            voxel.INDEX |= (1 << corner);
+                        }
                     }
 
                     int index = flattenIndex(x, y, z);
                     grid[index] = voxel;
 
-                    // Initialize edge data for each voxel
                     initEdgeData(grid[index]);
-
-                    foreach (Edge edge in grid[index].edgeData)
-                    {
-                        if (edge.crossed)
-                        {
-                            Debug.Log("edge intersection :\n" + edge.intersection);
-
-                            Instantiate(spherePrefab, edge.intersection, UnityEngine.Quaternion.identity);
-                        }
-                    }
-
-                    //-----PARTICLE BASED
-
-                    //Vector3 C = new Vector3();
-
-                    //int n = 0;
-                    //foreach (Edge edge in grid[index].edgeData)
-                    //{ 
-                    //    if (edge.crossed)
-                    //    {
-                    //        n++
-                    //        C += edge.intersection;
-                    //    }
-                    //}
-                    // C = C/n;
-
-                    //Vector3[] F = new Vector3[8];
-                    //for(int i = 0; i < 7; i++)
-                    //{
-                    //    foreach (Edge edge in grid[index].edgeData)
-                    //    {
-                    //        Debug.Log("edge intersection :\n" + edge.intersection );
-                    //        if (edge.crossed)
-                    //        {
-                    //            F[i] += edge.normal * (-edge.intersection.magnitude - 
-                    //                                    Vector3.Dot(edge.normal, grid[index].cornerPositions[i]));
-
-                    //        }
-
-                    //        Debug.Log("F:\n" + F[i] +  " i: " + i);
-                    //    }
-                    //}
-
-
-                    //Vector3 Fl1 = (1 - (C.x / voxelSize)) * F[0] + (C.x / voxelSize) * F[3];
-                    //Vector3 Fl2 = (1 - (C.x / voxelSize)) * F[4] + (C.x / voxelSize) * F[7];
-                    //Vector3 Fl3 = (1 - (C.x / voxelSize)) * F[1] + (C.x / voxelSize) * F[2];
-                    //Vector3 Fl4 = (1 - (C.x / voxelSize)) * F[5] + (C.x / voxelSize) * F[6];
-
-                    //Vector3 Fb1 = (1 - (C.y / voxelSize)) * Fl1 + (C.y / voxelSize) * Fl2;
-                    //Vector3 Fb2 = (1 - (C.y / voxelSize)) * Fl3 + (C.y / voxelSize) * Fl4;
-
-                    //Vector3 Force = (1 - (C.z / voxelSize)) * Fb1 + (C.y / voxelSize) * Fb2;
-
-
-                    //Vector3 pos = Force * 0.05f;
-
-                    //Debug.Log("Force:\n" + Force);
-
-                    //Debug.Log("pos:\n" + pos);
-                    //Instantiate(spherePrefab, pos, UnityEngine.Quaternion.identity);
-
-
 
 
                     //-----QR/SVD ROUTE
 
-                    //UnityEngine.Matrix4x4 A = new UnityEngine.Matrix4x4();
-                    //UnityEngine.Vector3 b = new UnityEngine.Vector3();
+                    QEF qef = new QEF();
 
+                    // Accumulate the matrix and vector
+                    foreach (Edge edge in grid[index].edgeData)
+                    {
+                        if (edge.crossed)
+                        {
+                            Vector3 n = edge.normal.normalized;
+                            Vector3 p = edge.intersection;
 
+                            qef.AddToQEFData(p, n);
 
-                    //// Initialize the matrix A to the identity matrix before accumulating
-                    //A.SetRow(0, new Vector4(0, 0, 0, 0));
-                    //A.SetRow(1, new Vector4(0, 0, 0, 0));
-                    //A.SetRow(2, new Vector4(0, 0, 0, 0));
-                    //A.SetRow(3, new Vector4(0, 0, 0, 1));  // For homogeneous coordinates
+                        }
+                    }
 
-                    //// Accumulate the matrix and vector
+                    Vector3 vertexPos = qef.SolveQEF();
 
-                    //foreach (Edge edge in grid[index].edgeData)
-                    //{
-                    //    if (edge.crossed)
-                    //    {
-                    //        UnityEngine.Vector3 normal = edge.normal;
-                    //        UnityEngine.Vector3 intersectionPoint = edge.intersection;
+                    Debug.Log("Pos: " + vertexPos);
+                    grid[index].vertex = vertexPos;
+                    if (vertexPos != Vector3.zero)
+                        Instantiate(spherePrefab, vertexPos, UnityEngine.Quaternion.identity);
 
-                    //        // Create the outer product matrix for the normal vector
-                    //        UnityEngine.Matrix4x4 normalOuterProduct = new UnityEngine.Matrix4x4();
-                    //        normalOuterProduct.m00 = normal.x * normal.x;
-                    //        normalOuterProduct.m01 = normal.x * normal.y;
-                    //        normalOuterProduct.m02 = normal.x * normal.z;
-
-                    //        normalOuterProduct.m10 = normal.y * normal.x;
-                    //        normalOuterProduct.m11 = normal.y * normal.y;
-                    //        normalOuterProduct.m12 = normal.y * normal.z;
-
-                    //        normalOuterProduct.m20 = normal.z * normal.x;
-                    //        normalOuterProduct.m21 = normal.z * normal.y;
-                    //        normalOuterProduct.m22 = normal.z * normal.z;
-
-                    //        // Manually add the outer product to the matrix A
-                    //        A.m00 += normalOuterProduct.m00;
-                    //        A.m01 += normalOuterProduct.m01;
-                    //        A.m02 += normalOuterProduct.m02;
-                    //        A.m10 += normalOuterProduct.m10;
-                    //        A.m11 += normalOuterProduct.m11;
-                    //        A.m12 += normalOuterProduct.m12;
-                    //        A.m20 += normalOuterProduct.m20;
-                    //        A.m21 += normalOuterProduct.m21;
-                    //        A.m22 += normalOuterProduct.m22;
-
-                    //        // Update the vector b
-                    //        b += normal * Vector3.Dot(normal, intersectionPoint);
-                    //    }
-                    //}
-
-
-                    //if (A.determinant != 0)
-                    //{
-                    //    UnityEngine.Vector3 position = A.inverse * b;
-                    //    Instantiate(spherePrefab, position, UnityEngine.Quaternion.identity);
-
-                    //    Debug.LogWarning("!!!WORKS!!!");
-                    //    Debug.Log("Matrix A:\n" + A);
-                    //    Debug.Log("Vector b: " + b);
-                    //}
-                    //else
-                    //{
-                    //    cnt++;
-                    //    // Handle the case where the matrix is singular
-                    //    Debug.LogWarning("Matrix A is singular, cannot compute position.");
-                    //    Debug.Log("Matrix A:\n" + A);
-                    //    Debug.Log("Vector b: " + b);
-                    //    Debug.Log("Zeros " + cnt);
-                    //}
 
                 }
             }
         }
+
+        Polygonize();
+    }
+
+    void Polygonize()
+    {
+
+        for (int x = 0; x < gridSize - 1; x++)
+        {
+            for (int y = 0; y < gridSize - 1; y++)
+            {
+                for (int z = 0; z < gridSize - 1; z++)
+                {
+                    int currentIndex = flattenIndex(x, y, z);
+                    Vector3 v0 = grid[currentIndex].vertex;
+
+                    if (v0 == Vector3.zero)
+                    {
+                        //Debug.Log($"[Missing Quad ] Skipped at ({x},{y},{z}) due to missing vertex v0");
+
+                        continue; // skip empty voxels
+                    }
+
+
+                    int rightIndex = flattenIndex(x + 1, y, z);
+                    int topIndex = flattenIndex(x, y + 1, z);
+                    int frontIndex = flattenIndex(x, y, z + 1);
+
+                    // Check X-aligned face (Right)
+                    if (x + 1 < gridSize)
+                    {
+                        Vector3 v1 = grid[rightIndex].vertex;
+                        int nextZ = flattenIndex(x + 1, y, z + 1);
+                        int nextY = flattenIndex(x, y, z + 1);
+
+                        if (v1 != Vector3.zero && grid[nextZ].vertex != Vector3.zero && grid[nextY].vertex != Vector3.zero)
+                        {
+                            AddQuad(v0, v1, grid[nextZ].vertex, grid[nextY].vertex);
+                        }
+                        else
+                        {
+                            Debug.Log($"[Missing Quad] Skipped at ({x},{y},{z}) due to missing vertex v1");
+                        }
+                    }
+
+                    // Check Y-aligned face (Top)
+                    if (y + 1 < gridSize)
+                    {
+                        Vector3 v1 = grid[topIndex].vertex;
+                        int nextZ = flattenIndex(x + 1, y + 1, z);
+                        int nextY = flattenIndex(x + 1, y, z);
+
+                        if (v1 != Vector3.zero && grid[nextZ].vertex != Vector3.zero && grid[nextY].vertex != Vector3.zero)
+                        {
+                            AddQuad(v0, v1, grid[nextZ].vertex, grid[nextY].vertex);
+                        }
+                        else
+                        {
+                            Debug.Log($"[Missing Quad] Skipped at ({x},{y},{z}) due to missing vertex v2");
+                        }
+                    }
+
+                    // Check Z-aligned face (Front)
+                    if (z + 1 < gridSize)
+                    {
+                        Vector3 v1 = grid[frontIndex].vertex;
+                        int nextX = flattenIndex(x, y + 1, z + 1);
+                        int nextY = flattenIndex(x, y + 1, z);
+
+                        if (v1 != Vector3.zero && grid[nextX].vertex != Vector3.zero && grid[nextY].vertex != Vector3.zero)
+                        {
+                            AddQuad(v0, v1, grid[nextX].vertex, grid[nextY].vertex);
+                        }
+                        else
+                        {
+                            Debug.Log($"[Missing Quad] Skipped at ({x},{y},{z}) due to missing vertex v3");
+                        }
+                    }
+                }
+            }
+        }
+
+        GenerateMesh(VertexBuffer, TriangleBuffer);
+    }
+
+
+
+    public void AddQuad(Vector3 v0, Vector3 v1, Vector3 v2, Vector3 v3)
+    {
+        int startIdx = VertexBuffer.Count;
+
+
+
+        VertexBuffer.Add(v0);
+        VertexBuffer.Add(v1);
+        VertexBuffer.Add(v2);
+        VertexBuffer.Add(v3);
+
+        TriangleBuffer.Add(startIdx);
+        TriangleBuffer.Add(startIdx + 2);
+        TriangleBuffer.Add(startIdx + 1);
+
+        TriangleBuffer.Add(startIdx);
+        TriangleBuffer.Add(startIdx + 3);
+        TriangleBuffer.Add(startIdx + 2);
+
+    }
+
+    void GenerateMesh(List<Vector3> vertices, List<int> triangles)
+    {
+        Mesh mesh = new Mesh();
+        mesh.vertices = vertices.ToArray();
+        mesh.triangles = triangles.ToArray();
+        mesh.RecalculateNormals();
+        mesh.RecalculateTangents();
+
+        MeshFilter meshFilter = GetComponent<MeshFilter>();
+        if (!meshFilter)
+            meshFilter = gameObject.AddComponent<MeshFilter>();
+
+        MeshRenderer meshRenderer = GetComponent<MeshRenderer>();
+        if (!meshRenderer)
+        {
+            meshRenderer = gameObject.AddComponent<MeshRenderer>();
+            meshRenderer.material = new Material(Shader.Find("Custom/doubleSided"));
+        }
+
+        meshFilter.mesh = mesh;
     }
 
 
@@ -291,7 +325,7 @@ public class DualContouring : MonoBehaviour
             float sampleV1 = voxel.densities[vertex1];
             float sampleV2 = voxel.densities[vertex2];
 
-            if ((sampleV1 < 0 && sampleV2 > 0) || (sampleV1 > 0 && sampleV2 < 0))
+            if (Mathf.Abs(sampleV1 - sampleV2) > 0.0001f && (sampleV1 < 0) != (sampleV2 < 0))
             {
                 float t = sampleV1 / (sampleV1 - sampleV2);
 
@@ -318,9 +352,10 @@ public class DualContouring : MonoBehaviour
         }
     }
 
-    // Update is called once per frame
+
     void Update()
     {
 
     }
+
 }

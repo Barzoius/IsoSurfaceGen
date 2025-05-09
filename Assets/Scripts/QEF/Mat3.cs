@@ -23,6 +23,18 @@ public class Mat3
         this.m22 = m22;
     }
 
+    public Mat3()
+    {
+        this.m00 = 0;
+        this.m01 = 0;
+        this.m02 = 0;
+        this.m10 = 0;
+        this.m11 = 0;
+        this.m12 = 0;
+        this.m20 = 0;
+        this.m21 = 0;
+        this.m22 = 0;
+    }
 
     public Mat3(Mat3 matrix)
     {
@@ -37,6 +49,14 @@ public class Mat3
         this.m20 = matrix.m20;
         this.m21 = matrix.m21;
         this.m22 = matrix.m22;
+    }
+
+    static public Mat3 Identity()
+    {
+        return new Mat3(1,0,0,
+                        0,1,0,
+                        0,0,1);
+
     }
 
     public float Determinant()
@@ -129,6 +149,67 @@ public class Mat3
         return new Mat3( m00, m01, m02,
                          m10, m11, m12,
                          m20, m21, m22 );
+    }
+
+    public static Vector3 operator *(Mat3 matrix, Vector3 vec)
+    {
+        float x = matrix.m00 * vec.x + matrix.m01 * vec.y + matrix.m02 * vec.z;
+        float y = matrix.m10 * vec.x + matrix.m11 * vec.y + matrix.m12 * vec.z;
+        float z = matrix.m20 * vec.x + matrix.m21 * vec.y + matrix.m22 * vec.z;
+
+        return new Vector3(x, y, z);
+    }
+
+
+
+    public float Get(int row, int col)
+    {
+        return this[row, col];
+    }
+
+    public void Set(int row, int col, float value)
+    {
+        this[row, col] = value;
+    }
+
+    public float this[int row, int col]
+    {
+        get
+        {
+            if (row == 0 && col == 0) return m00;
+            if (row == 0 && col == 1) return m01;
+            if (row == 0 && col == 2) return m02;
+            if (row == 1 && col == 0) return m10;
+            if (row == 1 && col == 1) return m11;
+            if (row == 1 && col == 2) return m12;
+            if (row == 2 && col == 0) return m20;
+            if (row == 2 && col == 1) return m21;
+            if (row == 2 && col == 2) return m22;
+            throw new System.IndexOutOfRangeException();
+        }
+        set
+        {
+            if (row == 0 && col == 0) m00 = value;
+            else if (row == 0 && col == 1) m01 = value;
+            else if (row == 0 && col == 2) m02 = value;
+            else if (row == 1 && col == 0) m10 = value;
+            else if (row == 1 && col == 1) m11 = value;
+            else if (row == 1 && col == 2) m12 = value;
+            else if (row == 2 && col == 0) m20 = value;
+            else if (row == 2 && col == 1) m21 = value;
+            else if (row == 2 && col == 2) m22 = value;
+            else throw new System.IndexOutOfRangeException();
+        }
+    }
+
+
+    public override string ToString()
+    {
+        return $"[{m00,6:F2}, {m01,6:F2}, {m02,6:F2}]\n" +
+               $"[{m10,6:F2}, {m11,6:F2}, {m12,6:F2}]\n" +
+               $"[{m20,6:F2}, {m21,6:F2}, {m22,6:F2}]";
+
+
     }
 
 
