@@ -126,7 +126,7 @@ public class InfWorld : MonoBehaviour
             meshFilter.mesh = chunkMesh;
 
 
-            meshRenderer.material = new Material(Shader.Find("Standard"));
+            meshRenderer.material = new Material(Shader.Find("Custom/HeightColored"));
             //meshRenderer.material = new Material(Shader.Find("Custom/doubleSided"));
             meshOBJ.SetActive(false);
         }

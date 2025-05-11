@@ -48,6 +48,7 @@ public class QEF
     {
         if (points == 0) return Vector3.zero;
 
+
         Vector3 center = MassPoint / points;
 
         Vector3 shiftedATb = ATb - ATA * center;
@@ -57,10 +58,10 @@ public class QEF
 
         Mat3 U = svdResolver.U;
         Mat3 Sigma = svdResolver.SIGMA;
-        float epsilon = 1e-5f;
-        Sigma[0, 0] = Sigma[0, 0] > epsilon ? 1 / Sigma[0, 0] : 0;
-        Sigma[1, 1] = Sigma[1, 1] > epsilon ? 1 / Sigma[1, 1] : 0;
-        Sigma[2, 2] = Sigma[2, 2] > epsilon ? 1 / Sigma[2, 2] : 0;
+        float epsilon = 1e-3f;
+        //Sigma[0, 0] = Sigma[0, 0] > epsilon ? 1 / Sigma[0, 0] : 0;
+        //Sigma[1, 1] = Sigma[1, 1] > epsilon ? 1 / Sigma[1, 1] : 0;
+        //Sigma[2, 2] = Sigma[2, 2] > epsilon ? 1 / Sigma[2, 2] : 0;
 
         Mat3 UT = svdResolver.UT;
         Mat3 invATA = UT * Sigma * U;

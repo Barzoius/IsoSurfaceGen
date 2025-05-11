@@ -1,0 +1,45 @@
+Shader "Custom/HeightColored"
+{
+     Properties
+    {
+        _MinHeight("Min Height", Float) = 1
+        _MaxHeight("Max Height", Float) = 10
+        _LowColor("Low Color", Color) = (0.45, 0.44, 0.42, 1)
+        _HighColor("High Color", Color) = (1, 1, 1, 1)
+        _Metallic("Metallic", Range(0,1)) = 0.1
+        _Smoothness("Smoothness", Range(0,1)) = 0.5
+    }
+
+    SubShader
+    {
+        Tags { "RenderType"="Opaque" }
+        LOD 200
+
+        CGPROGRAM
+        #pragma surface surf Standard fullforwardshadows
+
+        struct Input
+        {
+            float3 worldPos;
+        };
+
+        float _MinHeight;
+        float _MaxHeight;
+        fixed4 _LowColor;
+        fixed4 _HighColor;
+        half _Metallic;
+        half _Smoothness;
+
+        void surf (Input IN, inout SurfaceOutputStandard o)
+        {
+            float height = IN.worldPos.y;
+            float t = saturate((height - _MinHeight) / (_MaxHeight - _MinHeight));
+            o.Albedo = lerp(_LowColor.rgb, _HighColor.rgb, t);
+            o.Metallic = _Metallic;
+            o.Smoothness = _Smoothness;
+        }
+        ENDCG
+    }
+
+    FallBack "Standard"
+}

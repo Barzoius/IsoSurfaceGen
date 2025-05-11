@@ -14,14 +14,14 @@ public class SurfaceNets : MonoBehaviour
     private List<Vector3> VertexBuffer = new List<Vector3>();
     private List<int> TriangleBuffer = new List<int>();
 
-    struct Edge
+    public struct Edge
     {
         public UnityEngine.Vector3 normal;
         public UnityEngine.Vector3 intersection;
         public bool crossed;
     }
 
-    struct Voxel
+    public struct Voxel
     {
         public float[] densities;
         public UnityEngine.Vector3[] cornerPositions;
@@ -370,4 +370,7 @@ public class SurfaceNets : MonoBehaviour
 
     }
 
+    public Voxel[] GetVoxelGrid() => grid;
+    public int GetGridSize() => gridSize;
+    public int GetVoxelSize() => voxelSize;
 }
