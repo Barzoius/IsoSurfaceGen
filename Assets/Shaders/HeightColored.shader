@@ -2,9 +2,9 @@ Shader "Custom/HeightColored"
 {
      Properties
     {
-        _MinHeight("Min Height", Float) = 1
+        _MinHeight("Min Height", Float) = 6
         _MaxHeight("Max Height", Float) = 10
-        _LowColor("Low Color", Color) = (0.45, 0.44, 0.42, 1)
+        _LowColor("Low Color", Color) = (0.231, 0.502, 0.114)
         _HighColor("High Color", Color) = (1, 1, 1, 1)
         _Metallic("Metallic", Range(0,1)) = 0.1
         _Smoothness("Smoothness", Range(0,1)) = 0.5

@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 [CreateAssetMenu(fileName = "SurfaceNetsGenerator", menuName = "MeshGenerators/SurfaceNets")]
 public class SMGenerator : MeshGenerator
@@ -74,13 +75,12 @@ public class SMGenerator : MeshGenerator
 
     float SampleSDF(Vector3 position)
     {
-        Vector2 t = new Vector2(5.0f, 2.0f); // major (30) / minor (10) radius 
-        Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
+        float scale = 0.2f;
+        float heightMultiplier = 10f; //  max height
 
-        Vector3 p = position - center;
-        Vector2 q = new Vector2(Vector3.Distance(new Vector3(p.x, p.y, 0), Vector3.zero) - t.x, p.z);
+        float height = Mathf.PerlinNoise(position.x * scale, position.z * scale) * heightMultiplier;
 
-        return q.magnitude - t.y;
+        return position.y - height;
     }
 
 
@@ -139,7 +139,7 @@ public class SMGenerator : MeshGenerator
         }
     }
 
-    void InitGridDat()
+    void InitGridDat(Vector3 position)
     {
         for (int x = 0; x < gridSize; x++)
         {
@@ -158,7 +158,8 @@ public class SMGenerator : MeshGenerator
 
 
                     // Base position of the voxel
-                    Vector3 basePos = new Vector3(x * voxelSize, y * voxelSize, z * voxelSize);
+                    Vector3 basePos = position +  new Vector3(x * voxelSize, y * voxelSize, z * voxelSize);
+                    //Vector3 basePos = new Vector3(x * voxelSize, y * voxelSize, z * voxelSize);
 
                     for (int corner = 0; corner < 8; corner++)
                     {
@@ -209,7 +210,7 @@ public class SMGenerator : MeshGenerator
             }
         }
     }
-    void SurfaceNets(Vector3 position)
+    void SurfaceNets()
     {
         for (int x = 0; x < gridSize - 1; x++)
         {
@@ -245,7 +246,7 @@ public class SMGenerator : MeshGenerator
                         }
                         else
                         {
-                            //Debug.Log($"[Missing Quad] Skipped at ({x},{y},{z}) due to missing vertex v1");
+                            Debug.Log($"[Missing Quad] Skipped at ({x},{y},{z}) due to missing vertex v1");
                         }
                     }
 
@@ -262,7 +263,7 @@ public class SMGenerator : MeshGenerator
                         }
                         else
                         {
-                            //Debug.Log($"[Missing Quad] Skipped at ({x},{y},{z}) due to missing vertex v2");
+                            Debug.Log($"[Missing Quad] Skipped at ({x},{y},{z}) due to missing vertex v2");
                         }
                     }
 
@@ -279,7 +280,7 @@ public class SMGenerator : MeshGenerator
                         }
                         else
                         {
-                            //Debug.Log($"[Missing Quad] Skipped at ({x},{y},{z}) due to missing vertex v3");
+                            Debug.Log($"[Missing Quad] Skipped at ({x},{y},{z}) due to missing vertex v3");
                         }
                     }
                 }
@@ -319,14 +320,19 @@ public class SMGenerator : MeshGenerator
         VertexBuffer.Clear();
         TriangleBuffer.Clear();
 
+
         grid = new Voxel[gridSize * gridSize * gridSize];
 
-        SurfaceNets(position);
+        InitGridDat(position);
+
+        SurfaceNets();
+
+        Debug.Log($"Chunk origin: {position}, First vertex: {VertexBuffer[0]}");
 
         mesh.vertices = VertexBuffer.ToArray();
         mesh.triangles = TriangleBuffer.ToArray();
         mesh.RecalculateNormals();
-        mesh.RecalculateTangents();
+        //mesh.RecalculateTangents();
 
        
        

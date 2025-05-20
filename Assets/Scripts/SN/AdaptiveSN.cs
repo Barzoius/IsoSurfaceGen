@@ -4,6 +4,9 @@ using UnityEngine;
 
 public class AdaptiveSN : MonoBehaviour
 {
+    private List<Vector3> VertexBuffer = new List<Vector3>();
+    private List<int> TriangleBuffer = new List<int>();
+
     public GameObject spherePrefab;
     public int octreeSize = 8; 
     public int depth = 2;
@@ -57,6 +60,62 @@ public class AdaptiveSN : MonoBehaviour
         }
     }
 
+
+    void Polygonize(Node node)
+    {
+        if (node == null) return;
+
+
+
+    }
+
+
+
+
+
+
+    public void AddQuad(Vector3 v0, Vector3 v1, Vector3 v2, Vector3 v3)
+    {
+        int startIdx = VertexBuffer.Count;
+
+
+
+        VertexBuffer.Add(v0);
+        VertexBuffer.Add(v1);
+        VertexBuffer.Add(v2);
+        VertexBuffer.Add(v3);
+
+        TriangleBuffer.Add(startIdx);
+        TriangleBuffer.Add(startIdx + 2);
+        TriangleBuffer.Add(startIdx + 1);
+
+        TriangleBuffer.Add(startIdx);
+        TriangleBuffer.Add(startIdx + 3);
+        TriangleBuffer.Add(startIdx + 2);
+
+    }
+
+    void GenerateMesh(List<Vector3> vertices, List<int> triangles)
+    {
+        Mesh mesh = new Mesh();
+        mesh.vertices = vertices.ToArray();
+        mesh.triangles = triangles.ToArray();
+        mesh.RecalculateNormals();
+        mesh.RecalculateTangents();
+
+        MeshFilter meshFilter = GetComponent<MeshFilter>();
+        if (!meshFilter)
+            meshFilter = gameObject.AddComponent<MeshFilter>();
+
+        MeshRenderer meshRenderer = GetComponent<MeshRenderer>();
+        if (!meshRenderer)
+        {
+            meshRenderer = gameObject.AddComponent<MeshRenderer>();
+            meshRenderer.material = new Material(Shader.Find("Custom/doubleSided"));
+        }
+
+        meshFilter.mesh = mesh;
+    }
 
 
 }

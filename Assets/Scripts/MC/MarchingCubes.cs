@@ -52,15 +52,25 @@ public class MarchingCubes : MonoBehaviour
     //}
 
 
+    //float SampleSDF(Vector3 position)
+    //{
+    //    float scale = 0.1f; 
+    //    float heightMultiplier = 20f; // max terrain height
+
+    //    float height = Mathf.PerlinNoise(position.x * scale, position.z * scale) * heightMultiplier;
+
+    //    return position.y - height; // everything below `height` is solid terrain
+    //}
+
+
     float SampleSDF(Vector3 position)
     {
-        float scale = 0.1f; 
-        float heightMultiplier = 20f; // max terrain height
+        float radius = 10.0f;
+        Vector3 center = new Vector3(gridSize * voxelSize / 2, (gridSize * voxelSize / 2), gridSize * voxelSize / 2);
+        return Vector3.Distance(position, center) - radius;
 
-        float height = Mathf.PerlinNoise(position.x * scale, position.z * scale) * heightMultiplier;
-
-        return position.y - height; // everything below `height` is solid terrain
     }
+
 
     void Start()
     {

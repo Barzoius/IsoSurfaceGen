@@ -1,47 +1,42 @@
 Shader "Custom/doubleSided"
 {
-    Properties
+Properties
     {
         _MainTex ("Texture", 2D) = "white" {}
     }
+
     SubShader
     {
         Tags { "RenderType"="Opaque" }
-        Cull Off  // Disables backface culling
-        Pass
+        Cull Off
+
+        CGPROGRAM
+        #pragma surface surf Standard fullforwardshadows addshadow
+        #pragma target 3.0
+
+        sampler2D _MainTex;
+
+        struct Input
         {
-            CGPROGRAM
-            #pragma vertex vert
-            #pragma fragment frag
-            #include "UnityCG.cginc"
+            float2 uv_MainTex;
+            float3 viewDir;
+            INTERNAL_DATA
+        };
 
-            struct appdata_t
-            {
-                float4 vertex : POSITION;
-                float2 uv : TEXCOORD0;
-            };
+        void surf (Input IN, inout SurfaceOutputStandard o)
+        {
+            fixed4 tex = tex2D(_MainTex, IN.uv_MainTex);
+            o.Albedo = tex.rgb;
+            o.Alpha = tex.a;
 
-            struct v2f
-            {
-                float2 uv : TEXCOORD0;
-                float4 vertex : SV_POSITION;
-            };
-
-            sampler2D _MainTex;
-
-            v2f vert (appdata_t v)
-            {
-                v2f o;
-                o.vertex = UnityObjectToClipPos(v.vertex);
-                o.uv = v.uv;
-                return o;
-            }
-
-            fixed4 frag (v2f i) : SV_Target
-            {
-                return tex2D(_MainTex, i.uv);
-            }
-            ENDCG
+            // Flip normal for backfaces
+            #ifdef UNITY_FRONT_FACING
+            if (!unity_FrontFacing)
+                o.Normal = -o.Normal;
+            #endif
         }
+        ENDCG
     }
+
+    FallBack "Diffuse"
 }

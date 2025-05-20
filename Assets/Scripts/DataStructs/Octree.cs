@@ -29,6 +29,8 @@ public class Node
     public drawData nodeData;
     public Vector3 min;
 
+    public bool isLeaf = false;
+
     public Node()
     {
         size = 0;
@@ -191,6 +193,7 @@ public class Octree
 
         if(node.size == 1)
         {
+           node.isLeaf = true;
            return ConstructLeafNode(node);
         }
 
