@@ -52,23 +52,30 @@ public class MarchingCubes : MonoBehaviour
     //}
 
 
-    //float SampleSDF(Vector3 position)
-    //{
-    //    float scale = 0.1f; 
-    //    float heightMultiplier = 20f; // max terrain height
+    private static float CubeSDF(Vector3 position)
+    {
+        Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
+        Vector3 halfSize = new Vector3(10f, 10f, 10f);
+        Vector3 d = new Vector3(
+            Mathf.Abs(position.x - center.x) - halfSize.x,
+            Mathf.Abs(position.y - center.y) - halfSize.y,
+            Mathf.Abs(position.z - center.z) - halfSize.z
+        );
+        float outside = Mathf.Max(d.x, Mathf.Max(d.y, d.z));
+        float inside = Mathf.Min(Mathf.Max(d.x, Mathf.Max(d.y, d.z)), 0.0f);
+        return outside + inside;
+    }
 
-    //    float height = Mathf.PerlinNoise(position.x * scale, position.z * scale) * heightMultiplier;
-
-    //    return position.y - height; // everything below `height` is solid terrain
-    //}
-
-
-    float SampleSDF(Vector3 position)
+    private static float SphereSDF(Vector3 position)
     {
         float radius = 10.0f;
-        Vector3 center = new Vector3(gridSize * voxelSize / 2, (gridSize * voxelSize / 2), gridSize * voxelSize / 2);
+        Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
         return Vector3.Distance(position, center) - radius;
+    }
 
+    private static float SampleSDF(Vector3 position)
+    {
+        return Mathf.Max(CubeSDF(position), -SphereSDF(position));
     }
 
 

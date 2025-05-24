@@ -112,15 +112,10 @@ public class InfWorld : MonoBehaviour
             chunkMesh = meshGenerator.ConstructMesh(pos, size, 1);
          
 
-            //meshOBJ = GameObject.CreatePrimitive(PrimitiveType.Plane);
             meshOBJ = new GameObject("Chunk " + pos);
 
-            meshOBJ.transform.position = Vector3.zero; // fro sn
-            //meshOBJ.transform.position = pos; // for mc
-
-
-            //meshOBJ.transform.localScale = Vector3.one * size/10f;
-
+            meshOBJ.transform.position = Vector3.zero; 
+ 
 
             MeshFilter meshFilter = meshOBJ.AddComponent<MeshFilter>();
             MeshRenderer meshRenderer = meshOBJ.AddComponent<MeshRenderer>();
@@ -128,8 +123,8 @@ public class InfWorld : MonoBehaviour
             meshFilter.mesh = chunkMesh;
 
 
-            //meshRenderer.material = new Material(Shader.Find("Custom/HeightColored"));
-            meshRenderer.material = new Material(Shader.Find("Custom/doubleSided"));
+            meshRenderer.material = new Material(Shader.Find("Custom/HeightColored"));
+
             meshOBJ.SetActive(false);
         }
 
