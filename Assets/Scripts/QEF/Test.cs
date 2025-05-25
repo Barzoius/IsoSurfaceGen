@@ -9,16 +9,16 @@ public class Test : MonoBehaviour
     void Start()
     {
 
-        Mat3 A = new Mat3(
-          4, -30, 60,
-          -30, 300, -675,
-          60, -675, 1620
-      );
+      //  Mat3 A = new Mat3(
+      //    4, -30, 60,
+      //    -30, 300, -675,
+      //    60, -675, 1620
+      //);
 
-        SVD svd = new SVD();
-        Mat3 S = svd.ComputeSVD( A );
+      //  SVD svd = new SVD();
+      //  Mat3 S = svd.ComputeSVD( A );
 
-        Debug.Log(S);
+      //  Debug.Log(S);
         
 
 

@@ -8,8 +8,8 @@ public class Mat3
     public float m10, m11, m12;
     public float m20, m21, m22;
 
-    public Mat3(float m00, float m01, float m02, 
-                float m10, float m11, float m12, 
+    public Mat3(float m00, float m01, float m02,
+                float m10, float m11, float m12,
                 float m20, float m21, float m22)
     {
         this.m00 = m00;
@@ -38,12 +38,12 @@ public class Mat3
 
     public Mat3(Mat3 matrix)
     {
-        this.m00 = matrix.m00; 
-        this.m01 = matrix.m01;   
-        this.m02 = matrix.m02; 
+        this.m00 = matrix.m00;
+        this.m01 = matrix.m01;
+        this.m02 = matrix.m02;
 
-        this.m10 = matrix.m10;   
-        this.m11 = matrix.m11; 
+        this.m10 = matrix.m10;
+        this.m11 = matrix.m11;
         this.m12 = matrix.m12;
 
         this.m20 = matrix.m20;
@@ -53,9 +53,9 @@ public class Mat3
 
     static public Mat3 Identity()
     {
-        return new Mat3(1,0,0,
-                        0,1,0,
-                        0,0,1);
+        return new Mat3(1, 0, 0,
+                        0, 1, 0,
+                        0, 0, 1);
 
     }
 
@@ -104,10 +104,10 @@ public class Mat3
     public Mat3 Inverse()
     {
         return new Mat3((1 / this.Determinant()) * this.Adjoint());
-        
+
     }
 
-    public static Mat3 operator * (float f, Mat3 matrix)
+    public static Mat3 operator *(float f, Mat3 matrix)
     {
         return new Mat3(matrix.m00 * f, matrix.m01 * f, matrix.m02 * f,
                         matrix.m10 * f, matrix.m11 * f, matrix.m12 * f,
@@ -116,15 +116,7 @@ public class Mat3
     }
 
 
-    public static Vector3 operator * (Vector3 vec3, Mat3 matrix)
-    {
-       return new Vector3(
-       matrix.m00 * vec3.x + matrix.m01 * vec3.y + matrix.m02 * vec3.z,
-       matrix.m10 * vec3.x + matrix.m11 * vec3.y + matrix.m12 * vec3.z,
-       matrix.m20 * vec3.x + matrix.m21 * vec3.y + matrix.m22 * vec3.z );
-    }
-
-    public static Vector3 operator * (Vector3Int vec3, Mat3 matrix)
+    public static Vector3 operator *(Vector3 vec3, Mat3 matrix)
     {
         return new Vector3(
         matrix.m00 * vec3.x + matrix.m01 * vec3.y + matrix.m02 * vec3.z,
@@ -132,7 +124,15 @@ public class Mat3
         matrix.m20 * vec3.x + matrix.m21 * vec3.y + matrix.m22 * vec3.z);
     }
 
-    public static Mat3 operator * (Mat3 matrix1, Mat3 matrix2)
+    public static Vector3 operator *(Vector3Int vec3, Mat3 matrix)
+    {
+        return new Vector3(
+        matrix.m00 * vec3.x + matrix.m01 * vec3.y + matrix.m02 * vec3.z,
+        matrix.m10 * vec3.x + matrix.m11 * vec3.y + matrix.m12 * vec3.z,
+        matrix.m20 * vec3.x + matrix.m21 * vec3.y + matrix.m22 * vec3.z);
+    }
+
+    public static Mat3 operator *(Mat3 matrix1, Mat3 matrix2)
     {
         float m00 = matrix1.m00 * matrix2.m00 + matrix1.m01 * matrix2.m10 + matrix1.m02 * matrix2.m20;
         float m01 = matrix1.m00 * matrix2.m01 + matrix1.m01 * matrix2.m11 + matrix1.m02 * matrix2.m21;
@@ -146,9 +146,9 @@ public class Mat3
         float m21 = matrix1.m20 * matrix2.m01 + matrix1.m21 * matrix2.m11 + matrix1.m22 * matrix2.m21;
         float m22 = matrix1.m20 * matrix2.m02 + matrix1.m21 * matrix2.m12 + matrix1.m22 * matrix2.m22;
 
-        return new Mat3( m00, m01, m02,
+        return new Mat3(m00, m01, m02,
                          m10, m11, m12,
-                         m20, m21, m22 );
+                         m20, m21, m22);
     }
 
     public static Vector3 operator *(Mat3 matrix, Vector3 vec)

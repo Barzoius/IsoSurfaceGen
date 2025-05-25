@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class SurfaceNets : MonoBehaviour
 {
-    public static int gridSize = 64;
+    public static int gridSize = 32;
     public static int voxelSize = 4;
 
     public GameObject spherePrefab;
@@ -259,28 +259,37 @@ public class SurfaceNets : MonoBehaviour
 
     void GenerateMesh(List<Vector3> vertices, List<int> triangles)
     {
+
         Mesh mesh = new Mesh();
         mesh.vertices = vertices.ToArray();
         mesh.triangles = triangles.ToArray();
         mesh.RecalculateNormals();
         mesh.RecalculateTangents();
 
-        MeshFilter meshFilter = GetComponent<MeshFilter>();
-        if (!meshFilter)
-            meshFilter = gameObject.AddComponent<MeshFilter>();
 
-        MeshRenderer meshRenderer = GetComponent<MeshRenderer>();
-        if (!meshRenderer)
-        {
-            meshRenderer = gameObject.AddComponent<MeshRenderer>();
-            //meshRenderer.material = new Material(Shader.Find("Custom/doubleSided"));
-            //meshRenderer.material = new Material(Shader.Find("Custom/HeightColored"));
-            meshRenderer.material = new Material(Shader.Find("Standard"));
+        GameObject meshObject = new GameObject("Surface Nets Mesh");
+        meshObject.transform.position = Vector3.zero;
 
-        }
+
+        MeshFilter meshFilter = meshObject.AddComponent<MeshFilter>();
+        MeshRenderer meshRenderer = meshObject.AddComponent<MeshRenderer>();
 
         meshFilter.mesh = mesh;
+
+
+        Shader shader = Shader.Find("Standard"); 
+        if (shader != null)
+        {
+            Material material = new Material(shader);
+            //material.color = Color.green; 
+            meshRenderer.material = material;
+        }
+        else
+        {
+            Debug.LogError("Shader not found. Are you using URP or HDRP?");
+        }
     }
+
 
 
     void initEdgeData(Voxel voxel)
@@ -307,4 +316,8 @@ public class SurfaceNets : MonoBehaviour
             }
         }
     }
+
+    public Voxel[] GetVoxelGrid() => grid;
+    public int GetGridSize() => gridSize;
+    public int GetVoxelSize() => voxelSize;
 }

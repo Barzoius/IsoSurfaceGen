@@ -58,7 +58,7 @@ public class QEF
 
         Mat3 U = svdResolver.U;
         Mat3 Sigma = svdResolver.SIGMA;
-        float epsilon = 1e-3f;
+        //float epsilon = 1e-5f;
         //Sigma[0, 0] = Sigma[0, 0] > epsilon ? 1 / Sigma[0, 0] : 0;
         //Sigma[1, 1] = Sigma[1, 1] > epsilon ? 1 / Sigma[1, 1] : 0;
         //Sigma[2, 2] = Sigma[2, 2] > epsilon ? 1 / Sigma[2, 2] : 0;
