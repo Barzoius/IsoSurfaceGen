@@ -3,7 +3,10 @@ guid: fa6f10af5c305a74182f3db15506c74a
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
-  defaultReferences: []
+  defaultReferences:
+  - marchingCubesShader: {instanceID: 0}
+  - fieldCompute: {fileID: 7200000, guid: 49bd3437787c7bf418d9a5cc223c3a14, type: 3}
+  - scalarFieldTexture: {instanceID: 0}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

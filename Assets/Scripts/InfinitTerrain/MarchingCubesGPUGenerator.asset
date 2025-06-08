@@ -13,4 +13,9 @@ MonoBehaviour:
   m_Name: MarchingCubesGPUGenerator
   m_EditorClassIdentifier: 
   marchingCubesShader: {fileID: 7200000, guid: 4c91400f39a4fce49ad27cdb9c752ef8, type: 3}
-  maxTriangleCount: 1000000
+  fieldCompute: {fileID: 7200000, guid: 49bd3437787c7bf418d9a5cc223c3a14, type: 3}
+  fieldSize: 32
+  nScale: 15
+  hScale: 30
+  isoLevel: 0.5
+  scalarFieldTexture: {fileID: 0}

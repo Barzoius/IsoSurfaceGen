@@ -1,7 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
+using System.Runtime.InteropServices;
 
-[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+[System.Runtime.InteropServices.StructLayout(LayoutKind.Sequential)]
 public struct Triangle
 {
     public Vector3 a;
@@ -14,47 +15,53 @@ public class MCGPUGenerator : MeshGenerator
 {
     public ComputeShader marchingCubesShader;
     public ComputeShader fieldCompute;
-    public int maxTriangleCount = 1000000;
+
+    public int fieldSize = 32;
+    public int nScale = 10;
+    public int hScale = 20;
+    public float isoLevel = 0.5f;
+
+    private ComputeBuffer triangleBuffer;
+    private ComputeBuffer triCountBuffer;
 
     [HideInInspector] public RenderTexture scalarFieldTexture;
 
     public override Mesh ConstructMesh(Vector3 position, float size, int pvoxelSize)
     {
-        int gridSize = (int)size;
+        InitScalarFieldTexture();
 
-        int threadGroupSize = 8;
-        int numGroups = Mathf.CeilToInt(gridSize / (float)threadGroupSize);
-        int kernel = marchingCubesShader.FindKernel("MarchCube");
+        GenerateScalarField();
 
-        // Allocate triangle buffer (each triangle = 3 Vector3s = 36 bytes)
-        ComputeBuffer triangleBuffer = new ComputeBuffer(maxTriangleCount, sizeof(float) * 3 * 3, ComputeBufferType.Append);
+        int maxTriangleCount = fieldSize * fieldSize * fieldSize * 5; // Safe overestimate
+        triangleBuffer = new ComputeBuffer(maxTriangleCount, Marshal.SizeOf(typeof(Triangle)), ComputeBufferType.Append);
         triangleBuffer.SetCounterValue(0);
 
-        // Buffer to retrieve triangle count
-        ComputeBuffer triCountBuffer = new ComputeBuffer(1, sizeof(int), ComputeBufferType.Raw);
+        triCountBuffer = new ComputeBuffer(1, sizeof(int), ComputeBufferType.Raw);
 
-        // Set shader parameters
-        marchingCubesShader.SetInt("gridSize", gridSize);
-        marchingCubesShader.SetFloat("isoLevel", 0f);
-        marchingCubesShader.SetFloat("voxelSize", pvoxelSize);
-        marchingCubesShader.SetVector("offset", position);
+        int kernel = marchingCubesShader.FindKernel("MarchCube");
 
+        marchingCubesShader.SetTexture(kernel, "ScalarFieldTexture", scalarFieldTexture);
         marchingCubesShader.SetBuffer(kernel, "triangleBuffer", triangleBuffer);
+        marchingCubesShader.SetInt("gridSize", fieldSize);
+        marchingCubesShader.SetInt("textureSize", fieldSize);
+        marchingCubesShader.SetFloat("voxelSize", pvoxelSize);
+        marchingCubesShader.SetFloat("isoLevel", isoLevel);
+        marchingCubesShader.SetVector("chunkWorldPosition", position);
 
-        // Dispatch compute shader
-        marchingCubesShader.Dispatch(kernel, numGroups, numGroups, numGroups);
+        int threadGroups = Mathf.CeilToInt(fieldSize / 8f);
+        marchingCubesShader.Dispatch(kernel, threadGroups, threadGroups, threadGroups);
 
-        // Retrieve triangle count
+        
         ComputeBuffer.CopyCount(triangleBuffer, triCountBuffer, 0);
+
         int[] triCountArray = { 0 };
         triCountBuffer.GetData(triCountArray);
         int triangleCount = triCountArray[0];
 
-        // Retrieve triangle data
         Triangle[] triangles = new Triangle[triangleCount];
-        triangleBuffer.GetData(triangles);
+        triangleBuffer.GetData(triangles, 0, 0, triangleCount);
 
-        // Construct mesh
+        // Build mesh
         List<Vector3> vertices = new List<Vector3>();
         List<int> indices = new List<int>();
 
@@ -73,10 +80,36 @@ public class MCGPUGenerator : MeshGenerator
         mesh.SetTriangles(indices, 0);
         mesh.RecalculateNormals();
 
-        // Cleanup
         triangleBuffer.Release();
         triCountBuffer.Release();
 
         return mesh;
+    }
+
+    private void InitScalarFieldTexture()
+    {
+        if (scalarFieldTexture != null)
+            scalarFieldTexture.Release();
+
+        scalarFieldTexture = new RenderTexture(fieldSize, fieldSize, 0, RenderTextureFormat.RFloat)
+        {
+            dimension = UnityEngine.Rendering.TextureDimension.Tex3D,
+            volumeDepth = fieldSize,
+            enableRandomWrite = true
+        };
+        scalarFieldTexture.Create();
+    }
+
+    private void GenerateScalarField()
+    {
+        int kernel = fieldCompute.FindKernel("CreateScalarField");
+
+        fieldCompute.SetTexture(kernel, "ScalarFieldTexture", scalarFieldTexture);
+        fieldCompute.SetInt("textureSize", fieldSize);
+        fieldCompute.SetInt("nScale", nScale);
+        fieldCompute.SetInt("hScale", hScale);
+
+        int threadGroups = Mathf.CeilToInt(fieldSize / 8f);
+        fieldCompute.Dispatch(kernel, threadGroups, threadGroups, threadGroups);
     }
 }

@@ -7,7 +7,7 @@ public class InfWorld : MonoBehaviour
 {
     //256 MC CPU still runs
 
-    public const float viewDist = 64;
+    public const float viewDist = 128;
     public Transform cam;
     public static Vector3 camPos;
 
@@ -52,7 +52,7 @@ public class InfWorld : MonoBehaviour
             {
                 for (int offx = -visibleChunks; offx <= visibleChunks; offx++)
                 {
-                    Vector3 chunkCoord = new Vector3(currentChunkX + offx, 0, currentChunkZ + offz);
+                    Vector3 chunkCoord = new Vector3(currentChunkX + offx, currentChunkY + offy, currentChunkZ + offz);
 
                     if(chunkDir.ContainsKey(chunkCoord))
                     {
