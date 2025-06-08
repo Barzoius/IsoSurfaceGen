@@ -1,27 +1,92 @@
-// Each #kernel tells which function to compile; you can have many kernels
-#pragma kernel CSMain
+// MarchingCubes.compute
+#pragma kernel MarchCube
 
 #include "Include/MC_DATA_TABLES.compute"
 
-
 struct Triangle {
-    float3 vertexC;
-    float3 vertexB;
-    float3 vertexA;
+    float3 a;
+    float3 b;
+    float3 c;
+};
+
+AppendStructuredBuffer<Triangle> triangleBuffer;
+
+int gridSize;
+float voxelSize;
+float isoLevel;
+float3 offset;
+
+float SampleSDF(float3 p)
+{
+    float height = 0;
+    float freq = 0.01;
+    float amp = 2.0;
+    for (int i = 0; i < 5; i++)
+    {
+        float2 sample = p.xz * freq;
+        height += frac(sin(dot(sample, float2(127.1, 311.7))) * 43758.5453) * amp;
+        freq *= 2.0;
+        amp *= 0.5;
+    }
+    return p.y - height;
+}
+
+float3 VertexInterp(float3 p1, float3 p2, float v1, float v2)
+{
+    float t = (isoLevel - v1) / (v2 - v1 + 1e-6);
+    return lerp(p1, p2, t);
+}
+
+static const float3 cornerOffsets[8] = {
+    float3(0, 0, 0),
+    float3(1, 0, 0),
+    float3(1, 1, 0),
+    float3(0, 1, 0),
+    float3(0, 0, 1),
+    float3(1, 0, 1),
+    float3(1, 1, 1),
+    float3(0, 1, 1)
 };
 
 
-AppendStructuredBuffer<Triangle> triangles;
-RWStructuredBuffer<float4> vertices;
 
-// Create a RenderTexture with enableRandomWrite flag and set it
-// with cs.SetTexture
-RWTexture2D<float4> Result;
-
-[numthreads(8,8,1)]
-void CSMain (uint3 id : SV_DispatchThreadID)
+[numthreads(8, 8, 8)]
+void MarchCube(uint3 id : SV_DispatchThreadID)
 {
-    // TODO: insert actual code here!
+    if (id.x >= gridSize || id.y >= gridSize || id.z >= gridSize)
+        return;
 
-    Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+    float3 basePos = offset + (id * voxelSize);
+
+    float3 corners[8];
+    float values[8];
+    int cubeIndex = 0;
+
+    [unroll]
+    for (int j = 0; j < 8; j++)
+    {
+        float3 corner = basePos + cornerOffsets[j] * voxelSize;
+        corners[j] = corner;
+        values[j] = SampleSDF(corner);
+        if (values[j] < isoLevel) cubeIndex |= (1 << j);
+    }
+
+    if (edgeTable[cubeIndex] == 0) return;
+
+    for (uint i = 0; triTable[cubeIndex][i] != -1; i += 3)
+    {
+        int2 edgeA = int2(cornerIndexAFromEdge[triTable[cubeIndex][i]], cornerIndexBFromEdge[triTable[cubeIndex][i]]);
+        int2 edgeB = int2(cornerIndexAFromEdge[triTable[cubeIndex][i + 1]], cornerIndexBFromEdge[triTable[cubeIndex][i + 1]]);
+        int2 edgeC = int2(cornerIndexAFromEdge[triTable[cubeIndex][i + 2]], cornerIndexBFromEdge[triTable[cubeIndex][i + 2]]);
+
+        float3 v0 = VertexInterp(corners[edgeA.x], corners[edgeA.y], values[edgeA.x], values[edgeA.y]);
+        float3 v1 = VertexInterp(corners[edgeB.x], corners[edgeB.y], values[edgeB.x], values[edgeB.y]);
+        float3 v2 = VertexInterp(corners[edgeC.x], corners[edgeC.y], values[edgeC.x], values[edgeC.y]);
+
+        Triangle tri;
+        tri.a = v0;
+        tri.b = v1;
+        tri.c = v2;
+        triangleBuffer.Append(tri);
+    }
 }

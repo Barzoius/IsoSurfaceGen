@@ -45,13 +45,22 @@ public class MCGenerator : MeshGenerator
 
     float SampleSDF(Vector3 position)
     {
-        float scale = 0.2f;
-        float heightMultiplier = 10f; //  max height
+        float totalHeight = 0f;
+        float frequency = 0.04f;
+        float amplitude = 8f;  
 
-        float height = Mathf.PerlinNoise(position.x * scale, position.z * scale) * heightMultiplier;
+        for (int i = 0; i < 5; i++)
+        {
+            float noiseValue = Mathf.PerlinNoise(position.x * frequency, position.z * frequency);
+            totalHeight += noiseValue * amplitude;
 
-        return position.y - height;
+            frequency *= 2f;
+            amplitude *= 0.5f;
+        }
+
+        return position.y - totalHeight;
     }
+
 
     Vector3 VertexLerp(Vector3 p1, Vector3 p2, float v1, float v2)
     {

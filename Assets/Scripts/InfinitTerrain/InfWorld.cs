@@ -5,7 +5,9 @@ using UnityEngine;
 
 public class InfWorld : MonoBehaviour
 {
-    public const float viewDist = 32;
+    //256 MC CPU still runs
+
+    public const float viewDist = 64;
     public Transform cam;
     public static Vector3 camPos;
 
@@ -20,7 +22,7 @@ public class InfWorld : MonoBehaviour
 
     void Start()
     {
-        chunkSize = 16;
+        chunkSize = 32;
         visibleChunks = Mathf.RoundToInt(viewDist / chunkSize);
     }
 
@@ -73,17 +75,17 @@ public class InfWorld : MonoBehaviour
 
     }
 
-    void OnDrawGizmos()
-    {
-        Gizmos.color = Color.green;
+    //void OnDrawGizmos()
+    //{
+    //    Gizmos.color = Color.green;
 
-        foreach (var chunk in chunkDir.Values)
-        {
-            Gizmos.DrawWireCube(chunk.pos , Vector3.one * chunkSize);
-            Debug.Log(chunk.pos);
+    //    foreach (var chunk in chunkDir.Values)
+    //    {
+    //        Gizmos.DrawWireCube(chunk.pos , Vector3.one * chunkSize);
+    //        Debug.Log(chunk.pos);
            
-        }
-    }
+    //    }
+    //}
 
 
     public class Chunk

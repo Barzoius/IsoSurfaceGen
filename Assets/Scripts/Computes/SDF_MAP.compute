@@ -1,0 +1,33 @@
+#pragma kernel CreateScalarField
+
+#include "Noise.compute"
+
+RWTexture3D<float> ScalarFieldTexture;
+
+uint textureSize;
+
+int nScale;
+int hScale;
+
+float ClassicNoise(float2 p);
+
+[numthreads(8,8,8)]
+void CreateScalarField (uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= textureSize || id.y >= textureSize || id.z >= textureSize)
+    {
+        return;
+    }
+
+    float3 worldPos = float3(id.xyz) / textureSize;
+    float2 noisePos = worldPos.xz * nScale;
+
+    float noiseValue = ClassicNoise(noisePos);
+    noiseValue = (noiseValue + 1.0) * 0.5;
+
+    float terrainHeight = noiseValue * hScale;
+
+    float fieldValue = ((int)id.y < terrainHeight) ? 1.0 : 0.0;
+
+    ScalarFieldTexture[id] = fieldValue;
+}

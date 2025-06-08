@@ -66,7 +66,7 @@ public class SMGenerator : MeshGenerator
     float SampleSDF(Vector3 position)
     {
         float scale = 0.2f;
-        float heightMultiplier = 10f; //  max height
+        float heightMultiplier = 15f; //  max height
 
         float height = Mathf.PerlinNoise(position.x * scale, position.z * scale) * heightMultiplier;
 
@@ -259,11 +259,11 @@ public class SMGenerator : MeshGenerator
 
     void GenerateMeshFromBuffers()
     {
-        Debug.Log($"VertexBuffer: {VertexBuffer.Count}, QuadBuffer: {QuadBuffer.Count}");
+        //Debug.Log($"VertexBuffer: {VertexBuffer.Count}, QuadBuffer: {QuadBuffer.Count}");
 
         if (VertexBuffer.Count == 0 || QuadBuffer.Count < 4)
         {
-            Debug.LogWarning("Empty buffers – skipping mesh generation.");
+            //Debug.LogWarning("Empty buffers – skipping mesh generation.");
             return;
         }
 
@@ -309,7 +309,7 @@ public class SMGenerator : MeshGenerator
 
         GenerateMeshFromBuffers();
 
-        Debug.Log($"Chunk origin: {position}, First vertex: {VertexBuffer[0]}");
+        //Debug.Log($"Chunk origin: {position}, First vertex: {VertexBuffer[0]}");
 
         mesh.vertices = VertexBuffer.ToArray();
         mesh.triangles = TriangleBuffer.ToArray();
