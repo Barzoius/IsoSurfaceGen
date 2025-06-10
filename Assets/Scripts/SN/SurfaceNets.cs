@@ -75,17 +75,17 @@ public class SurfaceNets : MonoBehaviour
         return outside + inside;
     }
 
-    private static float SampleSDF(Vector3 position)
+    private static float SphereSDF(Vector3 position)
     {
-        float radius = 10.0f;
+        float radius = 11.0f;
         Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
         return Vector3.Distance(position, center) - radius;
     }
 
-    //private static float SampleSDF(Vector3 position)
-    //{
-    //    return Mathf.Max(CubeSDF(position), -SphereSDF(position));
-    //}
+    private static float SampleSDF(Vector3 position)
+    {
+        return Mathf.Max(CubeSDF(position), -SphereSDF(position));
+    }
 
     private Vector3 computeGradient(float x, float y, float z)
     {
@@ -148,8 +148,10 @@ public class SurfaceNets : MonoBehaviour
                         grid[index].vid = VertexBuffer.Count;
                         VertexBuffer.Add(avg);
 
+                        Debug.Log($"SN/Solved Position: {avg}");
+
                         // Optional debug
-                        // Instantiate(spherePrefab, avg, Quaternion.identity);
+                        //Instantiate(spherePrefab, avg, Quaternion.identity);
                     }
                 }
             }
@@ -289,8 +291,9 @@ public class SurfaceNets : MonoBehaviour
         if (shader != null)
         {
             //Material material = new Material(Shader.Find("Custom/TexturedTest"));
-            Material material = new Material(Shader.Find("Custom/TriplanarMapping"));
-            material.SetFloat("_Tiling", 0.1f);
+            //Material material = new Material(Shader.Find("Custom/TriplanarMapping"));
+            Material material = new Material(Shader.Find("Standard"));
+            //material.SetFloat("_Tiling", 0.1f);
 
 
             //material.color = Color.green; 

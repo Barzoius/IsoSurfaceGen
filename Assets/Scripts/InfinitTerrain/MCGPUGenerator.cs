@@ -16,10 +16,13 @@ public class MCGPUGenerator : MeshGenerator
     public ComputeShader marchingCubesShader;
     public ComputeShader fieldCompute;
 
-    public int fieldSize = 32;
+    public int fieldSize = 64;
     public int nScale = 10;
     public int hScale = 20;
     public float isoLevel = 0.5f;
+
+    float voxelSize;
+    Vector3 chunkWorldPosition;
 
     private ComputeBuffer triangleBuffer;
     private ComputeBuffer triCountBuffer;
@@ -29,6 +32,9 @@ public class MCGPUGenerator : MeshGenerator
     public override Mesh ConstructMesh(Vector3 position, float size, int pvoxelSize)
     {
         InitScalarFieldTexture();
+
+        chunkWorldPosition = position;
+        voxelSize = pvoxelSize;
 
         GenerateScalarField();
 
@@ -106,8 +112,8 @@ public class MCGPUGenerator : MeshGenerator
 
         fieldCompute.SetTexture(kernel, "ScalarFieldTexture", scalarFieldTexture);
         fieldCompute.SetInt("textureSize", fieldSize);
-        fieldCompute.SetInt("nScale", nScale);
-        fieldCompute.SetInt("hScale", hScale);
+        fieldCompute.SetFloats("chunkWorldPosition", chunkWorldPosition.x, chunkWorldPosition.y, chunkWorldPosition.z);
+        fieldCompute.SetFloat("voxelSize", voxelSize);
 
         int threadGroups = Mathf.CeilToInt(fieldSize / 8f);
         fieldCompute.Dispatch(kernel, threadGroups, threadGroups, threadGroups);

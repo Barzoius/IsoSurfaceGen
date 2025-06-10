@@ -289,6 +289,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac0a13a6f64ecd14cb015e938eb21964, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  viewDist: 256
   cam: {fileID: 963194228}
   algorithm: {fileID: 11400000, guid: c14bfc8887677bc4c99c9a10761927fc, type: 2}
 --- !u!4 &831267378
@@ -456,7 +457,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1691979626}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c50bceefbc5d4a74d892abf24e687499, type: 3}
   m_Name: 
@@ -469,7 +470,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1691979626}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6344a92452872d140bc56c76f88270bc, type: 3}
   m_Name: 
@@ -482,7 +483,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1691979626}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c40fa4c9bda8fdc4d94dbffd25f49d7a, type: 3}
   m_Name: 

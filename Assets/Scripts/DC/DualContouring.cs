@@ -9,8 +9,11 @@ namespace DC
 {
     public class DualContouring : MonoBehaviour
     {
-        public static int gridSize = 32;
-        public static int voxelSize = 4;
+        public static int gridSize = 64;
+        public static int voxelSize = 1;
+
+        public static float QEF_ERROR = 1e-6f;
+        public static int QEF_SWEEPS = 4;
 
         public GameObject spherePrefab;
 
@@ -83,7 +86,7 @@ namespace DC
 
         private static float SphereSDF(Vector3 position)
         {
-            float radius = 10.0f;
+            float radius = 11.0f;
             Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
             return Vector3.Distance(position, center) - radius;
         }
@@ -124,6 +127,7 @@ namespace DC
 
                         Vector3 basePos = new Vector3(x * voxelSize, y * voxelSize, z * voxelSize);
 
+
                         for (int i = 0; i < 8; i++)
                         {
                             Vector3 cornerPos = basePos + cornerOffsets[i] * voxelSize;
@@ -142,40 +146,40 @@ namespace DC
                         //-----QR/SVD ROUTE
 
 
-                        QEF qef = new QEF();
+                        //QEF qef = new QEF();
 
-                        // Accumulate the matrix and vector
+   
+                        QefSolver qef = new QefSolver();
+
+
+
+                        int cnt = 0;
                         foreach (Edge edge in grid[index].edgeData)
                         {
                             if (edge.crossed)
                             {
+                                cnt++;
                                 Vector3 n = edge.normal.normalized;
                                 Vector3 p = edge.intersection;
-
-                                qef.AddToQEFData(p, n);
-
+                                qef.add(p, n);
                             }
                         }
-                        Vector3 vertexPos = qef.SolveQEF();
 
-                        //Vector3 voxelCenter = basePos + Vector3.one * (voxelSize / 2f);
-                        //Vector3 cellMin = basePos;
-                        //Vector3 cellMax = basePos + Vector3.one * voxelSize;
+                        if (cnt != 0)
+                        {
+                            qef.solve(out Vector3 qefPosition, 1e-8f, QEF_SWEEPS, 1e-8f);
 
-                        //// Clamp the vertex position to be inside the voxel bounds
-                        //if (vertexPos.x < cellMin.x || vertexPos.y < cellMin.y || vertexPos.z < cellMin.z ||
-                        //    vertexPos.x > cellMax.x || vertexPos.y > cellMax.y || vertexPos.z > cellMax.z)
-                        //{
-                        //    vertexPos = voxelCenter;
-                        //}
+                            Vector3 vertexPos = new Vector3(qefPosition.x, qefPosition.y, qefPosition.z);
 
-                        Debug.Log("Pos: " + vertexPos);
-                        grid[index].vertex = vertexPos;
-                        grid[index].vid = VertexBuffer.Count;  
-                        VertexBuffer.Add(vertexPos);
-                        //if (vertexPos != Vector3.zero)
-                            //Instantiate(spherePrefab, vertexPos, UnityEngine.Quaternion.identity);
 
+
+
+                            grid[index].vertex = vertexPos;
+                            grid[index].vid = VertexBuffer.Count;
+                            VertexBuffer.Add(vertexPos);
+                            //if (vertexPos != Vector3.zero)
+                                //Instantiate(spherePrefab, vertexPos, UnityEngine.Quaternion.identity);
+                        }
 
                     }
                 }
@@ -257,11 +261,11 @@ namespace DC
 
         void GenerateMeshFromBuffers()
         {
-            Debug.Log($"VertexBuffer: {VertexBuffer.Count}, QuadBuffer: {QuadBuffer.Count}");
+            //Debug.Log($"VertexBuffer: {VertexBuffer.Count}, QuadBuffer: {QuadBuffer.Count}");
 
             if (VertexBuffer.Count == 0 || QuadBuffer.Count < 4)
             {
-                Debug.LogWarning("Empty buffers – skipping mesh generation.");
+                //Debug.LogWarning("Empty buffers – skipping mesh generation.");
                 return;
             }
 

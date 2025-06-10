@@ -5,7 +5,7 @@ using UnityEngine;
 public class MarchingCubes : MonoBehaviour
 {
     public static int gridSize = 64;
-    public static int voxelSize = 4;
+    public static int voxelSize = 1;
 
     public static float isosurface = 0f;
     public GameObject spherePrefab;
@@ -68,7 +68,7 @@ public class MarchingCubes : MonoBehaviour
 
     private static float SphereSDF(Vector3 position)
     {
-        float radius = 10.0f;
+        float radius = 11.0f;
         Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
         return Vector3.Distance(position, center) - radius;
     }

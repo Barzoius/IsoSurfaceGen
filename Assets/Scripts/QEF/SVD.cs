@@ -1,78 +1,140 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-public class SVD
+
+public static class SVD
 {
-    public Mat3 U;
-    public Mat3 SIGMA;
-    public Mat3 UT;
-
-
-    public Mat3 ComputeSVD(Mat3 A)
+    public static void rotate01(SMat3 vtav, Mat3 v)
     {
-        JacobiSVD(ref A, 15);
-        return U * SIGMA * UT;
-    }
-
-    public void ResolveSVD(Mat3 A)
-    {
-        JacobiSVD(ref A, 15);
-    }
-
-    public Mat3 ComputeGivensRotation(Mat3 A, int i, int j)
-    {
-        if (Mathf.Abs(A[i, j]) < 1e-6f)
-            return Mat3.Identity();
-
-        float theta = 0.5f * Mathf.Atan2(2f * A[i, j], A[j, j] - A[i, i]);
-        float c = Mathf.Cos(theta);
-        float s = Mathf.Sin(theta);
-
-        Mat3 J = Mat3.Identity();
-        J[i, i] = c;
-        J[j, j] = c;
-        J[i, j] = s;
-        J[j, i] = -s;
-
-        Debug.Log(J);
-        return J;
-    }
-
-    public void JacobiSVD(ref Mat3 A, int iterations)
-    {
-        U = Mat3.Identity();
-
-        for (int it = 0; it < iterations; it++)
+        if (vtav.m01 == 0)
         {
-            for (int i = 0; i < 2; i++)
-            {
-                for (int j = i + 1; j < 3; j++)
-                {
-                    Mat3 J = ComputeGivensRotation(A, i, j);
-                    Mat3 JT = J.Transpose();
-
-                    A = JT * A * J;
-
-                    U = U * J;
-
-                }
-
-            }
-
-            if (Mathf.Abs(A[0, 1]) < 1e-5f &&
-                Mathf.Abs(A[0, 2]) < 1e-5f &&
-                Mathf.Abs(A[1, 2]) < 1e-5f)
-                break;
+            return;
         }
 
-        SIGMA = A;
-        UT = U.Transpose();
+        float c = 0, s = 0;
+        Schur2.rot01(vtav, c, s);
+        Givens.rot01_post(v, c, s);
     }
 
+    public static void rotate02(SMat3 vtav, Mat3 v)
+    {
+        if (vtav.m02 == 0)
+        {
+            return;
+        }
 
+        float c = 0, s = 0;
+        Schur2.rot02(vtav, c, s);
+        Givens.rot02_post(v, c, s);
+    }
 
+    public static void rotate12(SMat3 vtav, Mat3 v)
+    {
+        if (vtav.m12 == 0)
+        {
+            return;
+        }
 
+        float c = 0, s = 0;
+        Schur2.rot12(vtav, c, s);
+        Givens.rot12_post(v, c, s);
+    }
 
+    public static void getSymmetricSvd(SMat3 a, SMat3 vtav, Mat3 v, float tol, int max_sweeps)
+    {
+        vtav.setSymmetric(a);
+        v.set(1, 0, 0, 0, 1, 0, 0, 0, 1);
+
+        float delta = tol * MathOps.fnorm(vtav);
+
+        for (int i = 0; i < max_sweeps && MathOps.off(vtav) > delta; ++i)
+        {
+            rotate01(vtav, v);
+            rotate02(vtav, v);
+            rotate12(vtav, v);
+        }
+    }
+
+    public static float calcError(Mat3 A, Vector3 x, Vector3 b)
+    {
+        Vector3 vtmp;
+        MathOps.vmul(out vtmp, A, x);
+        vtmp = b - vtmp;
+        return Vector3.Dot(vtmp, vtmp);
+    }
+
+    public static float calcError(SMat3 origA, Vector3 x, Vector3 b)
+    {
+        Mat3 A = new Mat3();
+        Vector3 vtmp;
+        A.setSymmetric(origA);
+        MathOps.vmul(out vtmp, A, x);
+        vtmp = b - vtmp;
+        return Vector3.Dot(vtmp, vtmp);
+    }
+
+    public static float pinv(float x, float tol)
+    {
+        return Mathf.Abs(x) < tol ? 0 : (1 / x);
+    }
+
+    public static void pseudoinverse(out Mat3 Out, SMat3 d, Mat3 v, float tol)
+    {
+        float d0 = pinv(d.m00, tol), d1 = pinv(d.m11, tol), d2 = pinv(d.m22, tol);
+
+        Out = new Mat3();
+        Out.set(v.m00 * d0 * v.m00 + v.m01 * d1 * v.m01 + v.m02 * d2 * v.m02,
+                v.m00 * d0 * v.m10 + v.m01 * d1 * v.m11 + v.m02 * d2 * v.m12,
+                v.m00 * d0 * v.m20 + v.m01 * d1 * v.m21 + v.m02 * d2 * v.m22,
+                v.m10 * d0 * v.m00 + v.m11 * d1 * v.m01 + v.m12 * d2 * v.m02,
+                v.m10 * d0 * v.m10 + v.m11 * d1 * v.m11 + v.m12 * d2 * v.m12,
+                v.m10 * d0 * v.m20 + v.m11 * d1 * v.m21 + v.m12 * d2 * v.m22,
+                v.m20 * d0 * v.m00 + v.m21 * d1 * v.m01 + v.m22 * d2 * v.m02,
+                v.m20 * d0 * v.m10 + v.m21 * d1 * v.m11 + v.m22 * d2 * v.m12,
+                v.m20 * d0 * v.m20 + v.m21 * d1 * v.m21 + v.m22 * d2 * v.m22);
+    }
+
+    public static float solveSymmetric(SMat3 A, Vector3 b, out Vector3 x, float svd_tol, int svd_sweeps, float pinv_tol)
+    {
+        Mat3 pinv;
+        Mat3 V = new Mat3();
+        SMat3 VTAV = new SMat3();
+        getSymmetricSvd(A, VTAV, V, svd_tol, svd_sweeps);
+        //VTAV.DebugLog("VTAV");
+        //A.DebugLog("A");
+        //V.DebugLog("V");
+        pseudoinverse(out pinv, VTAV, V, pinv_tol);
+        //pinv.DebugLog("pinv");
+        //VTAV.DebugLog("VTAV2");
+        //V.DebugLog("V2");
+        MathOps.vmul(out x, pinv, b);
+        //Debug.Log("x: " + x);
+        return calcError(A, x, b);
+    }
+
+    public static void calcSymmetricGivensCoefficients(float a_pp, float a_pq, float a_qq, float c, float s)
+    {
+        if (a_pq == 0)
+        {
+            c = 1;
+            s = 0;
+            return;
+        }
+
+        float tau = (a_qq - a_pp) / (2 * a_pq);
+        float stt = Mathf.Sqrt(1.0f + tau * tau);
+        float tan = 1.0f / ((tau >= 0) ? (tau + stt) : (tau - stt));
+        c = 1.0f / Mathf.Sqrt(1.0f + tan * tan);
+        s = tan * c;
+    }
+
+    public static float solveLeastSquares(Mat3 a, Vector3 b, Vector3 x, float svd_tol, int svd_sweeps, float pinv_tol)
+    {
+        Mat3 at;
+        SMat3 ata;
+        Vector3 atb;
+        MathOps.transpose(out at, a);
+        MathOps.mmul_ata(out ata, a);
+        MathOps.vmul(out atb, at, b);
+        return solveSymmetric(ata, atb, out x, svd_tol, svd_sweeps, pinv_tol);
+    }
 
 }

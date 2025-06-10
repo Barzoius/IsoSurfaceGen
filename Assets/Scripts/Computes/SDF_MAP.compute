@@ -6,28 +6,76 @@ RWTexture3D<float> ScalarFieldTexture;
 
 uint textureSize;
 
-int nScale;
-int hScale;
+float voxelSize;
+float3 chunkWorldPosition;
 
-float ClassicNoise(float2 p);
+float hash(float2 p) {
+    p = frac(p * 0.3183099 + float2(0.1, 0.7));
+    p *= 17.0;
+    return frac(p.x * p.y * (p.x + p.y));
+}
+
+float smoothNoise(float2 p) {
+    float2 i = floor(p);
+    float2 f = frac(p);
+
+    float a = hash(i);
+    float b = hash(i + float2(1, 0));
+    float c = hash(i + float2(0, 1));
+    float d = hash(i + float2(1, 1));
+
+    float2 u = f * f * (3.0 - 2.0 * f);
+
+    return lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);
+}
+
+float fbm(float2 p) {
+    float value = 0.0;
+    float amp = 1.0;
+    float freq = 0.01;
+
+    for (int i = 0; i < 6; i++) {
+        value += smoothNoise(p * freq) * amp;
+        freq *= 2.0;
+        amp *= 0.5;
+    }
+    return value;
+}
+
+float ridgedNoise(float2 p) {
+    return 1.0 - abs(smoothNoise(p) * 2.0 - 1.0);
+}
+
+float ridgedFBM(float2 p) {
+    float total = 0.0;
+    float amplitude = 0.2;
+    float frequency = 0.01;
+
+    for (int i = 0; i < 8; i++) {
+        total += ridgedNoise(p * frequency) * amplitude;
+        frequency *= 1.0;
+        amplitude *= 0.5;
+    }
+
+    return total;
+}
+
+// Sample SDF used to compute field value
+float SampleSDF(float3 p) {
+    float valley = fbm(p.xz);
+    float mountain = ridgedFBM(p.xz);
+    float height = lerp(valley, mountain * 2.0, 0.6); 
+    return p.y - height * 25.0;
+}
 
 [numthreads(8,8,8)]
 void CreateScalarField (uint3 id : SV_DispatchThreadID)
 {
     if (id.x >= textureSize || id.y >= textureSize || id.z >= textureSize)
-    {
         return;
-    }
 
-    float3 worldPos = float3(id.xyz) / textureSize;
-    float2 noisePos = worldPos.xz * nScale;
-
-    float noiseValue = ClassicNoise(noisePos);
-    noiseValue = (noiseValue + 1.0) * 0.5;
-
-    float terrainHeight = noiseValue * hScale;
-
-    float fieldValue = ((int)id.y < terrainHeight) ? 1.0 : 0.0;
+    float3 worldPos = chunkWorldPosition + (id * voxelSize);
+    float fieldValue = SampleSDF(worldPos);
 
     ScalarFieldTexture[id] = fieldValue;
 }
