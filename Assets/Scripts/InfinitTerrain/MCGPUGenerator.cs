@@ -17,8 +17,6 @@ public class MCGPUGenerator : MeshGenerator
     public ComputeShader fieldCompute;
 
     public int fieldSize = 64;
-    public int nScale = 10;
-    public int hScale = 20;
     public float isoLevel = 0.5f;
 
     float voxelSize;
@@ -97,12 +95,13 @@ public class MCGPUGenerator : MeshGenerator
         if (scalarFieldTexture != null)
             scalarFieldTexture.Release();
 
-        scalarFieldTexture = new RenderTexture(fieldSize, fieldSize, 0, RenderTextureFormat.RFloat)
+        scalarFieldTexture = new RenderTexture(fieldSize, fieldSize , 0, RenderTextureFormat.RFloat)
         {
             dimension = UnityEngine.Rendering.TextureDimension.Tex3D,
-            volumeDepth = fieldSize,
+            volumeDepth = fieldSize ,
             enableRandomWrite = true
         };
+
         scalarFieldTexture.Create();
     }
 

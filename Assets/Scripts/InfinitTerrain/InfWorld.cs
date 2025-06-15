@@ -23,7 +23,7 @@ public class InfWorld : MonoBehaviour
 
     void Start()
     {
-        chunkSize = 32;
+        chunkSize = 64;
         visibleChunks = Mathf.RoundToInt(viewDist / chunkSize);
     }
 

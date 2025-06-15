@@ -2,48 +2,100 @@
 
 #pragma kernel InitVertices
 #pragma kernel GetQuads
-#pragma kernel GetTrigs
+#pragma kernel GetIndices
 
 
+int textureSize;
+int gridSize;
+float voxelSize;
+float isoLevel;
+float3 chunkWorldPosition;
 
-#define GRID_SIZE 32
-#define VOXEL_SIZE 4
+int quadCount;
 
 
-struct Edge {
-    float3 normal;
-    float3 intersection;
-    bool crossed;
+static const float3 cornerOffsets[8] = {
+    float3(0, 0, 0),
+    float3(1, 0, 0),
+    float3(1, 1, 0),
+    float3(0, 1, 0),
+    float3(0, 0, 1),
+    float3(1, 0, 1),
+    float3(1, 1, 1),
+    float3(0, 1, 1)
 };
 
-struct Voxel {
-    float densities[8];
-    float3 cornerPositions[8];
-    Edge edgeData[12];
-    int INDEX;
-    float3 vertex;
-    int vid;
+static const int edges[12][2] = {
+    {0,1},{2,3},{4,5},{6,7},
+    {0,2},{1,3},{4,6},{5,7},
+    {0,4},{1,5},{2,6},{3,7}
 };
 
-
-
-float CubeSDF(float3 p) {
-    float3 center = GRID_SIZE * VOXEL_SIZE * 0.5;
-    float3 halfSize = float3(10, 10, 10);
-    float3 d = abs(p - center) - halfSize;
-    float outside = max(d.x, max(d.y, d.z));
-    float inside = min(max(d.x, max(d.y, d.z)), 0.0);
-    return outside + inside;
+uint FlattenIndex(uint x, uint y, uint z)
+{
+    return x * gridSize * gridSize + y * gridSize + z;
 }
 
-float SphereSDF(float3 p) {
-    float3 center = GRID_SIZE * VOXEL_SIZE * 0.5;
-    float radius = 10.0;
-    return length(p - center) - radius;
+float hash(float2 p) {
+    p = frac(p * 0.3183099 + float2(0.1, 0.7));
+    p *= 17.0;
+    return frac(p.x * p.y * (p.x + p.y));
+}
+
+float smoothNoise(float2 p) {
+    float2 i = floor(p);
+    float2 f = frac(p);
+
+    // Bilinear interpolation of noise
+    float a = hash(i);
+    float b = hash(i + float2(1, 0));
+    float c = hash(i + float2(0, 1));
+    float d = hash(i + float2(1, 1));
+
+    float2 u = f * f * (3.0 - 2.0 * f); // smoothstep interpolation
+
+    return lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);
+}
+
+float fbm(float2 p) {
+    float value = 0.0;
+    float amp = 1.0;
+    float freq = 0.01;
+
+    for (int i = 0; i < 6; i++) {
+        value += smoothNoise(p * freq) * amp;
+        freq *= 2.0;
+        amp *= 0.5;
+    }
+    return value;
+}
+
+float ridgedNoise(float2 p) {
+    return 1.0 - abs(smoothNoise(p) * 2.0 - 1.0); // range ~0 to 1
+}
+
+float ridgedFBM(float2 p) {
+    float total = 0.0;
+    float amplitude = 0.2;
+    float frequency = 0.01;
+
+    for (int i = 0; i < 5; i++) {
+        total += ridgedNoise(p * frequency) * amplitude;
+        frequency *= 1.5;
+        amplitude *= 0.5;
+    }
+
+    return total;
 }
 
 float SampleSDF(float3 p) {
-    return max(CubeSDF(p), -SphereSDF(p));
+    float valley = fbm(p.xz);
+    float mountain = ridgedFBM(p.xz);
+
+    // Blend between them
+    float height = lerp(valley, mountain * 2.0, 0.6); // tweak blend factor
+
+    return p.y - height * 25.0; // Increase height scale
 }
 
 float3 computeGradient(float3 p) {
@@ -55,7 +107,10 @@ float3 computeGradient(float3 p) {
 }
 
 
-StructuredBuffer<Voxel> Voxels;
+float3 VertexLerp(float3 p1, float3 p2, float v1, float v2) {
+    float t = (isoLevel - v1) / (v2 - v1);
+    return lerp(p1, p2, t);
+}
 
 
 RWStructuredBuffer<float3> Vertices;
@@ -64,17 +119,53 @@ RWStructuredBuffer<float3> Vertices;
 // KERNEL 1: InitVertices
 // ---------------------------
 [numthreads(8, 8, 8)]
-void InitVertices(uint3 position : SV_DispatchThreadID)
+void InitVertices(uint3 id : SV_DispatchThreadID)
 {
-    if (position.x + 1 >= GRID_SIZE || position.y + 1 >= GRID_SIZE || position.z + 1 >= GRID_SIZE)
-    {
+    if (id.x >= gridSize - 1 || id.y >= gridSize - 1 || id.z >= gridSize - 1)
         return;
+
+    float densities[8];
+    float3 corners[8];
+    float3 basePos = chunkWorldPosition + (float3)id * voxelSize;
+
+    int voxelIndex = 0;
+    for (int i = 0; i < 8; i++)
+    {
+        float3 pos = basePos + cornerOffsets[i] * voxelSize;
+        corners[i] = pos;
+        densities[i] = SampleSDF(pos);
+        if (densities[i] < isoLevel)
+        {
+            voxelIndex |= (1 << i);
+        }
     }
 
-    float3 VERTEX = float3(0, 0, 0);
+    float3 avg = float3(0, 0, 0);
+    int count = 0;
 
+    for (int i = 0; i < 12; i++)
+    {
+        int v1 = edges[i][0];
+        int v2 = edges[i][1];
 
+        float d1 = densities[v1];
+        float d2 = densities[v2];
+
+        if ((d1 < isoLevel) != (d2 < isoLevel))
+        {
+            float3 p = VertexLerp(corners[v1], corners[v2], d1, d2);
+            avg += p;
+            count++;
+        }
+    }
+
+    if (count > 0)
+    {
+        avg /= count;
+        Vertices[FlattenIndex(id.x, id.y, id.z)] = avg;
+    }
 }
+
 
 
 
@@ -89,37 +180,109 @@ struct Quad
 AppendStructuredBuffer<Quad> Quads;
 
 
-// ---------------------------
-// KERNEL 2: GetQuads
-// ---------------------------
 [numthreads(8, 8, 8)]
 void GetQuads(uint3 id : SV_DispatchThreadID)
 {
+    if (id.x >= gridSize - 2 || id.y >= gridSize - 2 || id.z >= gridSize - 2)
+        return;
 
+    uint3 base = id;
+    float3 p = chunkWorldPosition + (float3)base * voxelSize;
+
+    float d = SampleSDF(p);
+
+    [unroll]
+    for (int axis = 0; axis < 3; axis++)
+    {
+        uint3 neighbor = base;
+        neighbor[axis] += 1;
+
+        float d2 = SampleSDF(chunkWorldPosition + (float3)neighbor * voxelSize);
+        if (d * d2 > 0)
+            continue; // No crossing
+
+        uint3 v0 = base;
+
+        uint3 v1 = base;
+        if ((axis + 1) % 3 == 0) v1.x -= 1;
+        else if ((axis + 1) % 3 == 1) v1.y -= 1;
+        else v1.z -= 1;
+
+        uint3 v2 = v1;
+        if ((axis + 2) % 3 == 0) v2.x -= 1;
+        else if ((axis + 2) % 3 == 1) v2.y -= 1;
+        else v2.z -= 1;
+
+
+        uint3 v3 = base;
+        if ((axis + 2) % 3 == 0) v3.x -= 1;
+        else if ((axis + 2) % 3 == 1) v3.y -= 1;
+        else v3.z -= 1;
+
+        uint i0 = FlattenIndex(v0.x, v0.y, v0.z);
+        uint i1 = FlattenIndex(v1.x, v1.y, v1.z);
+        uint i2 = FlattenIndex(v2.x, v2.y, v2.z);
+        uint i3 = FlattenIndex(v3.x, v3.y, v3.z);
+
+        float3 P0 = Vertices[i0];
+        float3 P1 = Vertices[i1];
+        float3 P2 = Vertices[i2];
+        float3 P3 = Vertices[i3];
+
+        // If one of the vertices is null, skip
+        if (all(P0 == 0) || all(P1 == 0) || all(P2 == 0) || all(P3 == 0))
+            return;
+
+        if (d > 0)
+        {
+            float3 tmp = P1;
+            P1 = P3;
+            P3 = tmp;
+        }
+
+        Quad q;
+        q.vertex1 = P0;
+        q.vertex2 = P1;
+        q.vertex3 = P2;
+        q.vertex4 = P3;
+        Quads.Append(q);
+    }
 }
 
 
 
-
-
-
-struct QuadIndices 
+struct QuadIndices
 {
-	dword  Index1;
-	dword  Index2;
-	dword  Index3;
-	dword  Index4;
-	dword  Index5;
-	dword  Index6;
+    uint Index1;
+    uint Index2;
+    uint Index3;
+    uint Index4;
+    uint Index5;
+    uint Index6;
 };
 
 RWStructuredBuffer<QuadIndices> Indices;
 
-// ---------------------------
-// KERNEL 3: GetTrigs
-// ---------------------------
-[numthreads(8, 8, 8)]
-void GetTrigs(uint3 id : SV_DispatchThreadID)
+[numthreads(1, 1, 1)]
+void GetIndices(uint3 position : SV_DispatchThreadID)
 {
+	uint baseIndex = position.x * 4;
 
+	QuadIndices newIndices;
+	newIndices.Index1 = baseIndex;
+	newIndices.Index2 = baseIndex + 1;
+	newIndices.Index3 = baseIndex + 2;
+	newIndices.Index4 = baseIndex + 2;
+	newIndices.Index5 = baseIndex + 3;
+	newIndices.Index6 = baseIndex;
+
+	Indices[position.x] = newIndices;
 }
+
+
+
+
+
+
+
+

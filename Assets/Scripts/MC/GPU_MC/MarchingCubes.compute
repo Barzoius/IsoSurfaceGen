@@ -30,9 +30,66 @@ static const float3 cornerOffsets[8] = {
     float3(0, 1, 1)
 };
 
-float sample(int3 coord) {
-    coord = max(0, min(coord, textureSize-1));
-    return ScalarFieldTexture[coord];
+float hash(float2 p) {
+    p = frac(p * 0.3183099 + float2(0.1, 0.7));
+    p *= 17.0;
+    return frac(p.x * p.y * (p.x + p.y));
+}
+
+float smoothNoise(float2 p) {
+    float2 i = floor(p);
+    float2 f = frac(p);
+
+    // Bilinear interpolation of noise
+    float a = hash(i);
+    float b = hash(i + float2(1, 0));
+    float c = hash(i + float2(0, 1));
+    float d = hash(i + float2(1, 1));
+
+    float2 u = f * f * (3.0 - 2.0 * f); // smoothstep interpolation
+
+    return lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);
+}
+
+float fbm(float2 p) {
+    float value = 0.0;
+    float amp = 1.0;
+    float freq = 0.01;
+
+    for (int i = 0; i < 6; i++) {
+        value += smoothNoise(p * freq) * amp;
+        freq *= 2.0;
+        amp *= 0.5;
+    }
+    return value;
+}
+
+float ridgedNoise(float2 p) {
+    return 1.0 - abs(smoothNoise(p) * 2.0 - 1.0); // range ~0 to 1
+}
+
+float ridgedFBM(float2 p) {
+    float total = 0.0;
+    float amplitude = 0.2;
+    float frequency = 0.01;
+
+    for (int i = 0; i < 5; i++) {
+        total += ridgedNoise(p * frequency) * amplitude;
+        frequency *= 1.5;
+        amplitude *= 0.5;
+    }
+
+    return total;
+}
+
+float SampleSDF(float3 p) {
+    float valley = fbm(p.xz);
+    float mountain = ridgedFBM(p.xz);
+
+    // Blend between them
+    float height = lerp(valley, mountain * 2.0, 0.6); // tweak blend factor
+
+    return p.y - height * 25.0; // Increase height scale
 }
 
 
@@ -45,7 +102,7 @@ float3 VertexLerp(float3 p1, float3 p2, float v1, float v2) {
 [numthreads(8, 8, 8)]
 void MarchCube(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x >= gridSize || id.y >= gridSize || id.z >= gridSize)
+    if (id.x >= gridSize - 1 || id.y >= gridSize - 1  || id.z >= gridSize - 1 )
         return;
 
     float3 basePos = chunkWorldPosition + (id * voxelSize);
@@ -58,14 +115,20 @@ void MarchCube(uint3 id : SV_DispatchThreadID)
     for (int i = 0; i < 8; i++) 
     {
         float3 cornerWorld = basePos + cornerOffsets[i] * voxelSize;
-        cornerWorld = floor(cornerWorld / voxelSize + 0.5) * voxelSize;
         corners[i] = cornerWorld;
-        int3 voxelCoord = int3(floor((cornerWorld - chunkWorldPosition) / voxelSize));
-        densities[i] = sample(voxelCoord);
+
+        int3 sampleIndex = int3(id + cornerOffsets[i]);
+
+          if (all(sampleIndex >= 0) && all(sampleIndex < textureSize))
+             densities[i] = ScalarFieldTexture[sampleIndex];
+        else
+            densities[i] = 1e5; // large value outside iso surface
 
         if (densities[i] < isoLevel)
             cubeIndex |= (1 << i);
     }
+
+
 
     for (int i = 0; i < 16; i += 3) {
         int edgeIndex = triTable[cubeIndex][i];

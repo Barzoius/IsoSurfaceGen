@@ -9,11 +9,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fa6f10af5c305a74182f3db15506c74a, type: 3}
-  m_Name: MarchingCubesGPUGenerator
+  m_Script: {fileID: 11500000, guid: 1c61a6a494066914b98ab30f9354f056, type: 3}
+  m_Name: SurfaceNetsGPUGenerator
   m_EditorClassIdentifier: 
-  marchingCubesShader: {fileID: 7200000, guid: 4c91400f39a4fce49ad27cdb9c752ef8, type: 3}
+  surfaceNetsShader: {fileID: 7200000, guid: 34932381ed4c38f45a1e3bf5962ecff1, type: 3}
   fieldCompute: {fileID: 7200000, guid: 49bd3437787c7bf418d9a5cc223c3a14, type: 3}
   fieldSize: 64
-  isoLevel: 0.5
+  isoLevel: 0
   scalarFieldTexture: {fileID: 0}
