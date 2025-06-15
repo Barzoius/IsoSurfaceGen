@@ -65,12 +65,20 @@ public class DCGenerator : MeshGenerator
 
     float SampleSDF(Vector3 position)
     {
-        float scale = 0.2f;
-        float heightMultiplier = 15f; //  max height
+        float totalHeight = 0f;
+        float frequency = 0.04f;
+        float amplitude = 8f;
 
-        float height = Mathf.PerlinNoise(position.x * scale, position.z * scale) * heightMultiplier;
+        for (int i = 0; i < 5; i++)
+        {
+            float noiseValue = Mathf.PerlinNoise(position.x * frequency, position.z * frequency);
+            totalHeight += noiseValue * amplitude;
 
-        return position.y - height;
+            frequency *= 2f;
+            amplitude *= 0.5f;
+        }
+
+        return position.y - totalHeight;
     }
 
     //float SampleSDF(Vector3 position)

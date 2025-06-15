@@ -1,0 +1,97 @@
+#include "SVD.compute"
+
+
+struct QefData
+{
+    float ata_00, ata_01, ata_02, ata_11, ata_12, ata_22;
+    float atb_x, atb_y, atb_z;
+    float btb;
+    float massPoint_x, massPoint_y, massPoint_z;
+    int numPoints;
+};
+
+void QefData_clear(inout QefData data)
+{
+    data.ata_00 = 0; data.ata_01 = 0; data.ata_02 = 0;
+    data.ata_11 = 0; data.ata_12 = 0; data.ata_22 = 0;
+    data.atb_x = 0; data.atb_y = 0; data.atb_z = 0;
+    data.btb = 0;
+    data.massPoint_x = 0; data.massPoint_y = 0; data.massPoint_z = 0;
+    data.numPoints = 0;
+}
+
+void QefData_add(inout QefData data, float3 p, float3 n)
+{
+    // Normalize normal
+    float3 nn = normalize(n);
+
+    data.ata_00 += nn.x * nn.x;
+    data.ata_01 += nn.x * nn.y;
+    data.ata_02 += nn.x * nn.z;
+    data.ata_11 += nn.y * nn.y;
+    data.ata_12 += nn.y * nn.z;
+    data.ata_22 += nn.z * nn.z;
+
+    float dotp = dot(nn, p);
+    data.atb_x += dotp * nn.x;
+    data.atb_y += dotp * nn.y;
+    data.atb_z += dotp * nn.z;
+
+    data.btb += dotp * dotp;
+
+    data.massPoint_x += p.x;
+    data.massPoint_y += p.y;
+    data.massPoint_z += p.z;
+
+    data.numPoints += 1;
+}
+
+// Helper: convert QefData to symmetric matrix ata and vector atb
+void QefData_toMatrices(QefData data, out SMat3 ata, out float3 atb, out float3 massPoint)
+{
+    setSymmetric(ata, data.ata_00, data.ata_01, data.ata_02,
+                     data.ata_11, data.ata_12, data.ata_22);
+
+    atb = float3(data.atb_x, data.atb_y, data.atb_z);
+    massPoint = float3(data.massPoint_x, data.massPoint_y, data.massPoint_z);
+
+    // Normalize massPoint by number of points
+    if (data.numPoints > 0)
+    {
+        massPoint /= data.numPoints;
+    }
+}
+
+
+float QefSolver_solve(in QefData data, float svd_tol, int svd_sweeps, float pinv_tol, out float3 out_x)
+{
+    out_x = float3(0,0,0);
+    if (data.numPoints == 0)
+        return 0;
+
+    SMat3 ata;
+    float3 atb, massPoint;
+    QefData_toMatrices(data, ata, atb, massPoint);
+
+    // Shift atb by ata * massPoint
+    float3 ata_massPoint;
+    ata_massPoint = vmul_symmetric(ata, massPoint);
+    atb -= ata_massPoint;
+
+    // Solve the system using your SVD routine from compute shader code
+    float3 x = float3(0,0,0);
+    float error = solveSymmetric(ata, atb, x, svd_tol, svd_sweeps, pinv_tol);
+
+    // If error is NaN, fallback to massPoint
+    if (isnan(error))
+    {
+        x = massPoint;
+    }
+    else
+    {
+        x += massPoint;
+    }
+
+    out_x = x;
+    return error;
+}

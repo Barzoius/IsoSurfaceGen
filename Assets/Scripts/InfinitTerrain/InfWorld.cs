@@ -1,13 +1,14 @@
 using Palmmedia.ReportGenerator.Core;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
 
 public class InfWorld : MonoBehaviour
 {
     //256 MC CPU still runs
 
-    public const float viewDist = 256;
+    public const float viewDist = 512;
 
     public Transform cam;
     public static Vector3 camPos;
@@ -18,6 +19,9 @@ public class InfWorld : MonoBehaviour
     int chunkSize;
     int visibleChunks;
 
+    private bool initialChunksGenerated = false;
+    private Stopwatch stopwatch = new Stopwatch();
+
     Dictionary<Vector3, Chunk> chunkDir = new Dictionary<Vector3, Chunk>();
     List<Chunk> chunks = new List<Chunk>();
 
@@ -25,13 +29,27 @@ public class InfWorld : MonoBehaviour
     {
         chunkSize = 64;
         visibleChunks = Mathf.RoundToInt(viewDist / chunkSize);
+
+        stopwatch.Start();
     }
 
 
     private void Update()
     {
-        camPos = new Vector3(cam.position.x, cam.position.y, cam.position.z);
-        UpdateVisibleChunks();
+        camPos = cam.position;
+
+       
+        if (!initialChunksGenerated)
+        {
+            UpdateVisibleChunks();
+            stopwatch.Stop();
+            UnityEngine.Debug.Log($"Initial chunk generation took {stopwatch.ElapsedMilliseconds} ms");
+            initialChunksGenerated = true;
+        }
+        else
+        {
+            UpdateVisibleChunks(); 
+        }
     }
 
     void UpdateVisibleChunks()
@@ -53,7 +71,7 @@ public class InfWorld : MonoBehaviour
             {
                 for (int offx = -visibleChunks; offx <= visibleChunks; offx++)
                 {
-                    Vector3 chunkCoord = new Vector3(currentChunkX + offx, 0, currentChunkZ + offz);
+                    Vector3 chunkCoord = new Vector3(currentChunkX + offx, currentChunkY + offy, currentChunkZ + offz);
 
                     if(chunkDir.ContainsKey(chunkCoord))
                     {
@@ -78,13 +96,13 @@ public class InfWorld : MonoBehaviour
 
     //void OnDrawGizmos()
     //{
-    //    Gizmos.color = Color.green;
+    //    Gizmos.color = Color.gray;
 
     //    foreach (var chunk in chunkDir.Values)
     //    {
-    //        Gizmos.DrawWireCube(chunk.pos , Vector3.one * chunkSize);
+    //        Gizmos.DrawWireCube(chunk.pos, Vector3.one * chunkSize);
     //        Debug.Log(chunk.pos);
-           
+
     //    }
     //}
 

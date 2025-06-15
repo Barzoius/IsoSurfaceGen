@@ -1,0 +1,51 @@
+
+struct Mat3
+{
+    float m00; float m01; float m02; 
+    float m10; float m11; float m12;
+    float m20; float m21; float m22;
+};
+
+void clear(out Mat3 m)
+{
+    m.m00 = 0; m.m01 = 0; m.m02 = 0;
+    m.m10 = 0; m.m11 = 0; m.m12 = 0;
+    m.m20 = 0; m.m21 = 0; m.m22 = 0;
+
+}
+
+void set(out Mat3 m,
+         float m00, float m01, float m02,
+         float m10, float m11, float m12,
+         float m20, float m21, float m22)
+{
+    m.m00 = m00; m.m01 = m01; m.m02 = m02;
+    m.m10 = m10; m.m11 = m11; m.m12 = m12;
+    m.m20 = m20; m.m21 = m21; m.m22 = m22;
+}
+
+void setFromMat3(out Mat3 dst, Mat3 src)
+{
+    dst.m00 = src.m00; dst.m01 = src.m01; dst.m02 = src.m02;
+    dst.m10 = src.m10; dst.m11 = src.m11; dst.m12 = src.m12;
+    dst.m20 = src.m20; dst.m21 = src.m21; dst.m22 = src.m22;
+}
+
+void setSymmetric(out Mat3 m,
+                  float a00, float a01, float a02,
+                             float a11, float a12,
+                                        float a22)
+{
+    m.m00 = a00; m.m01 = a01; m.m02 = a02;
+    m.m10 = a01; m.m11 = a11; m.m12 = a12;
+    m.m20 = a02; m.m21 = a12; m.m22 = a22;
+}
+
+void set1Diag(out Mat3 m)
+{
+
+    m.m00 = 1; m.m01 = 0; m.m02 = 0;
+    m.m10 = 0; m.m11 = 1; m.m12 = 0;
+    m.m20 = 0; m.m21 = 0; m.m22 = 1;
+}
+
