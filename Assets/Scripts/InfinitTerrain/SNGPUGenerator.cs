@@ -25,7 +25,7 @@ public class SNGPUGenerator : MeshGenerator
     // Buffers
     ComputeBuffer vertexBuffer;
     ComputeBuffer quadBuffer;
-    ComputeBuffer indexBuffer;
+    //ComputeBuffer indexBuffer;
 
     public override Mesh ConstructMesh(Vector3 position, float size, int pvoxelSize)
     {
@@ -49,11 +49,11 @@ public class SNGPUGenerator : MeshGenerator
 
         vertexBuffer = new ComputeBuffer(voxelCount, sizeof(float) * 3, ComputeBufferType.Append);
         quadBuffer = new ComputeBuffer(voxelCount, sizeof(float) * 3 * 4, ComputeBufferType.Append);
-        indexBuffer = new ComputeBuffer(4, sizeof(uint), ComputeBufferType.IndirectArguments);
+        //indexBuffer = new ComputeBuffer(4, sizeof(uint), ComputeBufferType.IndirectArguments);
 
         vertexBuffer.SetCounterValue(0);
         quadBuffer.SetCounterValue(0);
-        indexBuffer.SetCounterValue(0);
+        //indexBuffer.SetCounterValue(0);
 
         // Kernel 1: InitVertices
         int initKernel = surfaceNetsShader.FindKernel("InitVertices");
@@ -75,10 +75,10 @@ public class SNGPUGenerator : MeshGenerator
             
         int quadCount = GetCount(quadBuffer);
         // Kernel 3: GetIndices
-        int triKernel = surfaceNetsShader.FindKernel("GetIndices");
-        surfaceNetsShader.SetBuffer(triKernel, "Quads", quadBuffer);
-        surfaceNetsShader.SetBuffer(triKernel, "Indices", indexBuffer);
-        surfaceNetsShader.Dispatch(triKernel, quadCount, 1, 1); 
+        //int triKernel = surfaceNetsShader.FindKernel("GetIndices");
+        //surfaceNetsShader.SetBuffer(triKernel, "Quads", quadBuffer);
+        //surfaceNetsShader.SetBuffer(triKernel, "Indices", indexBuffer);
+        //surfaceNetsShader.Dispatch(triKernel, quadCount, 1, 1); 
     }
 
     Mesh ExtractMesh()
@@ -133,6 +133,6 @@ public class SNGPUGenerator : MeshGenerator
     {
         vertexBuffer?.Release();
         quadBuffer?.Release();
-        indexBuffer?.Release();
+        //indexBuffer?.Release();
     }
 }

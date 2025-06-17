@@ -1,5 +1,3 @@
-using Palmmedia.ReportGenerator.Core;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
@@ -22,8 +20,10 @@ public class InfWorld : MonoBehaviour
     private bool initialChunksGenerated = false;
     private Stopwatch stopwatch = new Stopwatch();
 
-    Dictionary<Vector3, Chunk> chunkDir = new Dictionary<Vector3, Chunk>();
+    public Dictionary<Vector3, Chunk> chunkDir = new Dictionary<Vector3, Chunk>();
     List<Chunk> chunks = new List<Chunk>();
+
+
 
     void Start()
     {
@@ -50,6 +50,36 @@ public class InfWorld : MonoBehaviour
         {
             UpdateVisibleChunks(); 
         }
+
+
+        //if (Input.GetMouseButton(0)) // Left click
+        //{
+        //    UnityEngine.Debug.Log("pressed");
+        //    Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        //    if (Physics.Raycast(ray, out RaycastHit hit, 100f))
+        //    {
+        //        UnityEngine.Debug.Log("raycast");
+        //        Vector3 hitPoint = hit.point;
+
+        //        // Get chunk coordinates from hit point
+        //        Vector3 chunkCoord = new Vector3(
+        //            Mathf.Floor(hitPoint.x / chunkSize),
+        //            Mathf.Floor(hitPoint.y / chunkSize),
+        //            Mathf.Floor(hitPoint.z / chunkSize)
+        //        );
+
+        //        if (chunkDir.TryGetValue(chunkCoord, out Chunk chunk))
+        //        {
+        //            UnityEngine.Debug.Log("got chunked");
+        //            if (chunk.meshGenerator is MCGPUGenerator mcGen)
+        //            {
+        //                UnityEngine.Debug.Log("edit");
+        //                mcGen.Edit(hitPoint, -1f, 2.0f); // Dig
+        //                chunk.RegenerateMesh();
+        //            }
+        //        }
+        //    }
+        //}
     }
 
     void UpdateVisibleChunks()
@@ -84,7 +114,8 @@ public class InfWorld : MonoBehaviour
                     }
                     else
                     {
-                        chunkDir.Add(chunkCoord, new Chunk(chunkCoord, chunkSize, algorithm));
+                        var chunkGenerator = Instantiate(algorithm) as MCGPUGenerator;
+                        chunkDir.Add(chunkCoord, new Chunk(chunkCoord, chunkSize, chunkGenerator));
                     }
                 }
             }
@@ -93,6 +124,7 @@ public class InfWorld : MonoBehaviour
 
 
     }
+
 
     //void OnDrawGizmos()
     //{
@@ -107,6 +139,7 @@ public class InfWorld : MonoBehaviour
     //}
 
 
+
     public class Chunk
     {
         public Vector3 pos; // center
@@ -119,7 +152,7 @@ public class InfWorld : MonoBehaviour
         Bounds bounds;
 
 
-        private MeshGenerator meshGenerator;
+        public MeshGenerator meshGenerator;
         public Chunk(Vector3 coord, float csize, MeshGenerator generator)
         {
             size = csize;
@@ -135,8 +168,20 @@ public class InfWorld : MonoBehaviour
 
             meshOBJ = new GameObject("Chunk " + pos);
 
-            meshOBJ.transform.position = Vector3.zero; 
- 
+            meshOBJ.transform.position = Vector3.zero;
+
+            int terrainLayerIndex = LayerMask.NameToLayer("Terrain");
+            if (terrainLayerIndex != -1)
+            {
+                meshOBJ.layer = terrainLayerIndex;
+            }
+            else
+            {
+                UnityEngine.Debug.LogWarning("Layer 'Terrain' not found. Please create it in Tags & Layers.");
+            }
+
+            MeshCollider collider = meshOBJ.AddComponent<MeshCollider>();
+            collider.sharedMesh = chunkMesh;
 
             MeshFilter meshFilter = meshOBJ.AddComponent<MeshFilter>();
             MeshRenderer meshRenderer = meshOBJ.AddComponent<MeshRenderer>();
@@ -147,6 +192,19 @@ public class InfWorld : MonoBehaviour
             meshRenderer.material = new Material(Shader.Find("Custom/HeightColored"));
 
             meshOBJ.SetActive(false);
+        }
+
+        public void RegenerateMesh()
+        {
+            UnityEngine.Debug.Log("regen");
+            chunkMesh = meshGenerator.ConstructMesh(pos, size, 1);
+            meshOBJ.GetComponent<MeshFilter>().mesh = chunkMesh;
+
+            MeshCollider collider = meshOBJ.GetComponent<MeshCollider>();
+            if (collider != null)
+            {
+                collider.sharedMesh = chunkMesh;
+            }
         }
 
         public void UpdateChunk()

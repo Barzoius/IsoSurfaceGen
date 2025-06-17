@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   marchingCubesShader: {fileID: 7200000, guid: 4c91400f39a4fce49ad27cdb9c752ef8, type: 3}
   fieldCompute: {fileID: 7200000, guid: 49bd3437787c7bf418d9a5cc223c3a14, type: 3}
+  editCompute: {fileID: 7200000, guid: 0acec5d863bb4454d81be50c0be894b6, type: 3}
   fieldSize: 64
   isoLevel: 0
   scalarFieldTexture: {fileID: 0}

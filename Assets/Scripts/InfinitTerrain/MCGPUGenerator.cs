@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System.Runtime.InteropServices;
+using UnityEditor;
 
 [System.Runtime.InteropServices.StructLayout(LayoutKind.Sequential)]
 public struct Triangle
@@ -16,6 +17,8 @@ public class MCGPUGenerator : MeshGenerator
     public ComputeShader marchingCubesShader;
     public ComputeShader fieldCompute;
 
+    public ComputeShader editCompute;
+
     public int fieldSize = 64;
     public float isoLevel = 0.0f;
 
@@ -27,14 +30,20 @@ public class MCGPUGenerator : MeshGenerator
 
     [HideInInspector] public RenderTexture scalarFieldTexture;
 
+    private bool initialized = false;
+
     public override Mesh ConstructMesh(Vector3 position, float size, int pvoxelSize)
     {
-        InitScalarFieldTexture();
 
         chunkWorldPosition = position;
         voxelSize = pvoxelSize;
 
-        GenerateScalarField();
+        if (!initialized || scalarFieldTexture == null || !scalarFieldTexture.IsCreated())
+        {
+            InitScalarFieldTexture();
+            GenerateScalarField();
+            initialized = true;
+        }
 
         int maxTriangleCount = fieldSize * fieldSize * fieldSize * 5; // Safe overestimate
         triangleBuffer = new ComputeBuffer(maxTriangleCount, Marshal.SizeOf(typeof(Triangle)), ComputeBufferType.Append);
@@ -89,6 +98,42 @@ public class MCGPUGenerator : MeshGenerator
 
         return mesh;
     }
+
+
+    public void Edit(Vector3 point, float density, float radius)
+    {
+        Debug.Log("edit func");
+
+        // Use the actual chunk size for correct scaling
+        float pixelWorld = 1;  // Add fallback
+
+        int editRadius = Mathf.CeilToInt(radius / pixelWorld);
+
+        // Convert world space point to voxel-local space
+        float tx = Mathf.Clamp01((point.x - chunkWorldPosition.x) / fieldSize);
+        float ty = Mathf.Clamp01((point.y - chunkWorldPosition.y) / fieldSize);
+        float tz = Mathf.Clamp01((point.z - chunkWorldPosition.z) / fieldSize);
+
+        int editX = Mathf.RoundToInt(tx * (fieldSize));
+        int editY = Mathf.RoundToInt(ty * (fieldSize));
+        int editZ = Mathf.RoundToInt(tz * (fieldSize));
+
+        Debug.Log($"Editing at voxel [{editX}, {editY}, {editZ}] with radius {editRadius}");
+
+        int kernel = editCompute.FindKernel("CSMain");
+
+        editCompute.SetFloat("density", density);
+        editCompute.SetFloat("deltaTime", Time.deltaTime);
+        editCompute.SetInts("brushCentre", editX, editY, editZ);
+        editCompute.SetInt("brushRadius", editRadius);
+        editCompute.SetInt("size", fieldSize + 1);
+
+        editCompute.SetTexture(kernel, "EditedTexture", scalarFieldTexture);
+
+        int threadGroups = Mathf.CeilToInt((fieldSize + 1) / 8f);
+        editCompute.Dispatch(kernel, threadGroups, threadGroups, threadGroups);
+    }
+
 
     private void InitScalarFieldTexture()
     {

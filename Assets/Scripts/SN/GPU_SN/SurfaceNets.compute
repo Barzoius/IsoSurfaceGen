@@ -2,7 +2,7 @@
 
 #pragma kernel InitVertices
 #pragma kernel GetQuads
-#pragma kernel GetIndices
+//#pragma kernel GetIndices
 
 
 int textureSize;
