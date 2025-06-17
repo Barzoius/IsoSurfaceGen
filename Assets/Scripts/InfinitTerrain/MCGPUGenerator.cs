@@ -17,7 +17,7 @@ public class MCGPUGenerator : MeshGenerator
     public ComputeShader fieldCompute;
 
     public int fieldSize = 64;
-    public float isoLevel = 0.5f;
+    public float isoLevel = 0.0f;
 
     float voxelSize;
     Vector3 chunkWorldPosition;
@@ -47,7 +47,7 @@ public class MCGPUGenerator : MeshGenerator
         marchingCubesShader.SetTexture(kernel, "ScalarFieldTexture", scalarFieldTexture);
         marchingCubesShader.SetBuffer(kernel, "triangleBuffer", triangleBuffer);
         marchingCubesShader.SetInt("gridSize", fieldSize);
-        marchingCubesShader.SetInt("textureSize", fieldSize);
+        marchingCubesShader.SetInt("textureSize", fieldSize+1);
         marchingCubesShader.SetFloat("voxelSize", pvoxelSize);
         marchingCubesShader.SetFloat("isoLevel", isoLevel);
         marchingCubesShader.SetVector("chunkWorldPosition", position);
@@ -95,10 +95,12 @@ public class MCGPUGenerator : MeshGenerator
         if (scalarFieldTexture != null)
             scalarFieldTexture.Release();
 
-        scalarFieldTexture = new RenderTexture(fieldSize, fieldSize , 0, RenderTextureFormat.RFloat)
+        var format = UnityEngine.Experimental.Rendering.GraphicsFormat.R32_SFloat;
+        scalarFieldTexture = new RenderTexture(fieldSize+1, fieldSize+1 , 0)
         {
+            graphicsFormat = format,
             dimension = UnityEngine.Rendering.TextureDimension.Tex3D,
-            volumeDepth = fieldSize ,
+            volumeDepth = fieldSize +1 ,
             enableRandomWrite = true
         };
 
@@ -110,11 +112,11 @@ public class MCGPUGenerator : MeshGenerator
         int kernel = fieldCompute.FindKernel("CreateScalarField");
 
         fieldCompute.SetTexture(kernel, "ScalarFieldTexture", scalarFieldTexture);
-        fieldCompute.SetInt("textureSize", fieldSize);
+        fieldCompute.SetInt("textureSize", fieldSize + 1);
         fieldCompute.SetFloats("chunkWorldPosition", chunkWorldPosition.x, chunkWorldPosition.y, chunkWorldPosition.z);
         fieldCompute.SetFloat("voxelSize", voxelSize);
 
-        int threadGroups = Mathf.CeilToInt(fieldSize / 8f);
+        int threadGroups = Mathf.CeilToInt((fieldSize+1) / 8f);
         fieldCompute.Dispatch(kernel, threadGroups, threadGroups, threadGroups);
     }
 }

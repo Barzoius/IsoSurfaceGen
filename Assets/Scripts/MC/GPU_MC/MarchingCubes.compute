@@ -102,7 +102,7 @@ float3 VertexLerp(float3 p1, float3 p2, float v1, float v2) {
 [numthreads(8, 8, 8)]
 void MarchCube(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x >= gridSize - 1 || id.y >= gridSize - 1  || id.z >= gridSize - 1 )
+    if (id.x >= gridSize  || id.y >= gridSize   || id.z >= gridSize  )
         return;
 
     float3 basePos = chunkWorldPosition + (id * voxelSize);
@@ -122,7 +122,7 @@ void MarchCube(uint3 id : SV_DispatchThreadID)
           if (all(sampleIndex >= 0) && all(sampleIndex < textureSize))
              densities[i] = ScalarFieldTexture[sampleIndex];
         else
-            densities[i] = 1e5; // large value outside iso surface
+            densities[i] = 0; // large value outside iso surface
 
         if (densities[i] < isoLevel)
             cubeIndex |= (1 << i);

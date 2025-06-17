@@ -8,7 +8,7 @@ public class InfWorld : MonoBehaviour
 {
     //256 MC CPU still runs
 
-    public const float viewDist = 512;
+    public const float viewDist = 124;
 
     public Transform cam;
     public static Vector3 camPos;

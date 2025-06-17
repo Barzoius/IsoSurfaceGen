@@ -4,7 +4,7 @@
 
 RWTexture3D<float> ScalarFieldTexture;
 
-uint textureSize;
+int textureSize;
 
 float voxelSize;
 float3 chunkWorldPosition;
