@@ -194,7 +194,7 @@ Light:
   serializedVersion: 10
   m_Type: 1
   m_Shape: 0
-  m_Color: {r: 0.8805031, g: 0.78518856, b: 0.38039216, a: 1}
+  m_Color: {r: 0.8805031, g: 1, b: 1, a: 1}
   m_Intensity: 1.6
   m_Range: 10
   m_SpotAngle: 30
@@ -427,7 +427,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08eba51399147944b848b0c5a0ab1d21, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  editRadius: 20
+  editRadius: 10
   editStrength: 20
   terrainLayer:
     serializedVersion: 2

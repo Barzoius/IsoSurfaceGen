@@ -33,11 +33,20 @@ For a cube with corners labeled 7-6-5-4-3-2-1-0, each corner contributes a 1 if 
 
 For example, if corners 7, 6, 5 and 4 are inside the surface, while the rest are outside, the binary index is 11110000(=240).
 
-| corner ordering | surface intersection | corner evaluation |
-|---|---|---|
-| ![](Assets/Imgs/voxel.png)  | ![](Assets/Imgs/voxelWithSurface.png)| ![](Assets/Imgs/weightedVoxel.png)  |
+| corner evaluation |
+|---|
+| ![](readMeImgs/isoCross.png)  |
 
 
+<div align="center">
+  <img src="readMeImgs/isoCross.png" alt="Framework Diagram" style="width:80%;">
+</div>
+
+| corner evaluation |
+|---|
+| <div align="center">
+  <img src="readMeImgs/isoCross.png" alt="Framework Diagram" style="width:80%;">
+</div>  |
 
 
 
