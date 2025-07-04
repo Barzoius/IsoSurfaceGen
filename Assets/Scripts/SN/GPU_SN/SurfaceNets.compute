@@ -2,7 +2,6 @@
 
 #pragma kernel InitVertices
 #pragma kernel GetQuads
-//#pragma kernel GetIndices
 
 
 int textureSize;
@@ -11,7 +10,7 @@ float voxelSize;
 float isoLevel;
 float3 chunkWorldPosition;
 
-int quadCount;
+RWTexture3D<float> ScalarFieldTexture;
 
 
 static const float3 cornerOffsets[8] = {
@@ -36,73 +35,17 @@ uint FlattenIndex(uint x, uint y, uint z)
     return x * gridSize * gridSize + y * gridSize + z;
 }
 
-float hash(float2 p) {
-    p = frac(p * 0.3183099 + float2(0.1, 0.7));
-    p *= 17.0;
-    return frac(p.x * p.y * (p.x + p.y));
-}
 
-float smoothNoise(float2 p) {
-    float2 i = floor(p);
-    float2 f = frac(p);
-
-    // Bilinear interpolation of noise
-    float a = hash(i);
-    float b = hash(i + float2(1, 0));
-    float c = hash(i + float2(0, 1));
-    float d = hash(i + float2(1, 1));
-
-    float2 u = f * f * (3.0 - 2.0 * f); // smoothstep interpolation
-
-    return lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);
-}
-
-float fbm(float2 p) {
-    float value = 0.0;
-    float amp = 1.0;
-    float freq = 0.01;
-
-    for (int i = 0; i < 6; i++) {
-        value += smoothNoise(p * freq) * amp;
-        freq *= 2.0;
-        amp *= 0.5;
-    }
-    return value;
-}
-
-float ridgedNoise(float2 p) {
-    return 1.0 - abs(smoothNoise(p) * 2.0 - 1.0); // range ~0 to 1
-}
-
-float ridgedFBM(float2 p) {
-    float total = 0.0;
-    float amplitude = 0.2;
-    float frequency = 0.01;
-
-    for (int i = 0; i < 5; i++) {
-        total += ridgedNoise(p * frequency) * amplitude;
-        frequency *= 1.5;
-        amplitude *= 0.5;
-    }
-
-    return total;
-}
 
 float SampleSDF(float3 p) {
-    float valley = fbm(p.xz);
-    float mountain = ridgedFBM(p.xz);
-
-    // Blend between them
-    float height = lerp(valley, mountain * 2.0, 0.6); // tweak blend factor
-
-    return p.y - height * 25.0; // Increase height scale
+    return p.y;
 }
 
 float3 computeGradient(float3 p) {
     float eps = 0.01;
-    float dx = SampleSDF(p + float3(eps, 0, 0)) - SampleSDF(p - float3(eps, 0, 0));
-    float dy = SampleSDF(p + float3(0, eps, 0)) - SampleSDF(p - float3(0, eps, 0));
-    float dz = SampleSDF(p + float3(0, 0, eps)) - SampleSDF(p - float3(0, 0, eps));
+    float dx = ScalarFieldTexture[p + float3(eps, 0, 0)] - ScalarFieldTexture[p - float3(eps, 0, 0)];
+    float dy = ScalarFieldTexture[p + float3(0, eps, 0)] - ScalarFieldTexture[p - float3(0, eps, 0)];
+    float dz = ScalarFieldTexture[p + float3(0, 0, eps)] - ScalarFieldTexture[p - float3(0, 0, eps)];
     return normalize(float3(dx, dy, dz));
 }
 
@@ -121,50 +64,54 @@ RWStructuredBuffer<float3> Vertices;
 [numthreads(8, 8, 8)]
 void InitVertices(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x >= gridSize - 1 || id.y >= gridSize - 1 || id.z >= gridSize - 1)
+    if (id.x >= gridSize || id.y >= gridSize || id.z >= gridSize)
         return;
 
-    float densities[8];
-    float3 corners[8];
     float3 basePos = chunkWorldPosition + (float3)id * voxelSize;
 
+    float3 corners[8];
+    float densities[8];
     int voxelIndex = 0;
-    for (int i = 0; i < 8; i++)
-    {
-        float3 pos = basePos + cornerOffsets[i] * voxelSize;
-        corners[i] = pos;
-        densities[i] = SampleSDF(pos);
+
+    for (int i = 0; i < 8; i++) {
+        
+        int3 sampleIndex = int3(id + cornerOffsets[i]);
+
+        float3 cornerWorld = basePos + cornerOffsets[i] * voxelSize;
+        corners[i] = cornerWorld;
+
+         if (all(sampleIndex >= 0) && all(sampleIndex < textureSize))
+             densities[i] = ScalarFieldTexture[sampleIndex];
+        else
+            densities[i] = 0; // large value outside iso surface
+
         if (densities[i] < isoLevel)
-        {
             voxelIndex |= (1 << i);
-        }
     }
 
     float3 avg = float3(0, 0, 0);
     int count = 0;
 
-    for (int i = 0; i < 12; i++)
-    {
+    for (int i = 0; i < 12; i++) {
         int v1 = edges[i][0];
         int v2 = edges[i][1];
 
         float d1 = densities[v1];
         float d2 = densities[v2];
 
-        if ((d1 < isoLevel) != (d2 < isoLevel))
-        {
+        if ((d1 < isoLevel) != (d2 < isoLevel)) {
             float3 p = VertexLerp(corners[v1], corners[v2], d1, d2);
             avg += p;
             count++;
         }
     }
 
-    if (count > 0)
-    {
+    if (count > 0) {
         avg /= count;
         Vertices[FlattenIndex(id.x, id.y, id.z)] = avg;
     }
 }
+
 
 
 
@@ -183,21 +130,23 @@ AppendStructuredBuffer<Quad> Quads;
 [numthreads(8, 8, 8)]
 void GetQuads(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x >= gridSize - 2 || id.y >= gridSize - 2 || id.z >= gridSize - 2)
+    
+    if (id.x >= gridSize || id.y >= gridSize  || id.z >= gridSize )
         return;
 
     uint3 base = id;
     float3 p = chunkWorldPosition + (float3)base * voxelSize;
 
-    float d = SampleSDF(p);
+    float d = ScalarFieldTexture[p];                             
 
     [unroll]
     for (int axis = 0; axis < 3; axis++)
     {
-        uint3 neighbor = base;
+        int3 neighbor = base;
         neighbor[axis] += 1;
 
-        float d2 = SampleSDF(chunkWorldPosition + (float3)neighbor * voxelSize);
+
+        float d2 = ScalarFieldTexture[neighbor * voxelSize];
         if (d * d2 > 0)
             continue; // No crossing
 
@@ -248,37 +197,6 @@ void GetQuads(uint3 id : SV_DispatchThreadID)
         Quads.Append(q);
     }
 }
-
-
-
-struct QuadIndices
-{
-    uint Index1;
-    uint Index2;
-    uint Index3;
-    uint Index4;
-    uint Index5;
-    uint Index6;
-};
-
-RWStructuredBuffer<QuadIndices> Indices;
-
-[numthreads(1, 1, 1)]
-void GetIndices(uint3 position : SV_DispatchThreadID)
-{
-	uint baseIndex = position.x * 4;
-
-	QuadIndices newIndices;
-	newIndices.Index1 = baseIndex;
-	newIndices.Index2 = baseIndex + 1;
-	newIndices.Index3 = baseIndex + 2;
-	newIndices.Index4 = baseIndex + 2;
-	newIndices.Index5 = baseIndex + 3;
-	newIndices.Index6 = baseIndex;
-
-	Indices[position.x] = newIndices;
-}
-
 
 
 

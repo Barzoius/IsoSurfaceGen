@@ -174,7 +174,10 @@ public class MarchingCubes : MonoBehaviour
         MeshRenderer meshRenderer = meshObject.AddComponent<MeshRenderer>();
 
         meshFilter.mesh = mesh;
-        meshRenderer.material = new Material(Shader.Find("Standard"));
+        //meshRenderer.material = new Material(Shader.Find("Standard"));
+        Material material = new Material(Shader.Find("Custom/TriplanarMapping"));
+        material.SetFloat("_Tiling", 0.1f);
+        meshRenderer.material = material;
     }
 
     void Update() { }

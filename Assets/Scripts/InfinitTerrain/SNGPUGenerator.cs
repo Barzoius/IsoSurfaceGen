@@ -13,8 +13,9 @@ public class SNGPUGenerator : MeshGenerator
 {
     public ComputeShader surfaceNetsShader;
     public ComputeShader fieldCompute;
+    public ComputeShader editCompute;
 
-    public int fieldSize = 64;
+    public int fieldSize = 64; // effective size WITHOUT padding
     public float isoLevel = 0.0f;
 
     float voxelSize;
@@ -22,18 +23,26 @@ public class SNGPUGenerator : MeshGenerator
 
     [HideInInspector] public RenderTexture scalarFieldTexture;
 
+
+    private bool initialized = false;
+
     // Buffers
     ComputeBuffer vertexBuffer;
     ComputeBuffer quadBuffer;
-    //ComputeBuffer indexBuffer;
+
 
     public override Mesh ConstructMesh(Vector3 position, float size, int pvoxelSize)
     {
         chunkWorldPosition = position;
         voxelSize = pvoxelSize;
 
-        //InitScalarFieldTexture();
-        //GenerateScalarField();
+
+        if (!initialized || scalarFieldTexture == null || !scalarFieldTexture.IsCreated())
+        {
+            InitScalarFieldTexture();
+            GenerateScalarField();
+            initialized = true;
+        }
 
         RunSurfaceNetsCompute();
 
@@ -43,43 +52,101 @@ public class SNGPUGenerator : MeshGenerator
         return mesh;
     }
 
+    private void InitScalarFieldTexture()
+    {
+        if (scalarFieldTexture != null)
+            scalarFieldTexture.Release();
+
+        var format = UnityEngine.Experimental.Rendering.GraphicsFormat.R32_SFloat;
+        scalarFieldTexture = new RenderTexture(fieldSize+3, fieldSize+3, 0)
+        {
+            graphicsFormat = format,
+            dimension = UnityEngine.Rendering.TextureDimension.Tex3D,
+            volumeDepth = fieldSize + 3,
+            enableRandomWrite = true
+        };
+        scalarFieldTexture.Create();
+    }
+
+    private void GenerateScalarField()
+    {
+        int kernel = fieldCompute.FindKernel("CreateScalarField");
+
+        fieldCompute.SetTexture(kernel, "ScalarFieldTexture", scalarFieldTexture);
+        fieldCompute.SetInt("textureSize", fieldSize + 1);
+        fieldCompute.SetFloats("chunkWorldPosition", chunkWorldPosition.x, chunkWorldPosition.y, chunkWorldPosition.z);
+        fieldCompute.SetFloat("voxelSize", voxelSize);
+
+        int threadGroups = Mathf.CeilToInt((fieldSize + 1) / 8f);
+        fieldCompute.Dispatch(kernel, threadGroups, threadGroups, threadGroups);
+    }
+
+    public override void Edit(Vector3 point, float density, float radius)
+    {
+        float pixelWorld = 1f;
+
+        int editRadius = Mathf.CeilToInt(radius / pixelWorld);
+
+        float tx = Mathf.Clamp01((point.x - chunkWorldPosition.x) / (fieldSize * voxelSize));
+
+        float ty = Mathf.Clamp01((point.y - chunkWorldPosition.y) / (fieldSize * voxelSize));
+        float tz = Mathf.Clamp01((point.z - chunkWorldPosition.z) / (fieldSize * voxelSize));
+
+        int editX = Mathf.RoundToInt(tx * (fieldSize)) + 1;
+        int editY = Mathf.RoundToInt(ty * (fieldSize)) + 1;
+        int editZ = Mathf.RoundToInt(tz * (fieldSize)) + 1;
+
+        Debug.Log($"Editing at voxel [{editX}, {editY}, {editZ}] with radius {editRadius}");
+
+        int kernel = editCompute.FindKernel("CSMain");
+
+        editCompute.SetFloat("density", density);
+        editCompute.SetFloat("deltaTime", Time.deltaTime);
+        editCompute.SetInts("brushCentre", editX, editY, editZ);
+        editCompute.SetInt("brushRadius", editRadius);
+        editCompute.SetInt("size", fieldSize + 1);
+
+        editCompute.SetTexture(kernel, "EditedTexture", scalarFieldTexture);
+
+        int threadGroups = Mathf.CeilToInt((fieldSize + 1) / 8f);
+        editCompute.Dispatch(kernel, threadGroups, threadGroups, threadGroups);
+    }
+
+
     void RunSurfaceNetsCompute()
     {
         int voxelCount = fieldSize * fieldSize * fieldSize;
 
         vertexBuffer = new ComputeBuffer(voxelCount, sizeof(float) * 3, ComputeBufferType.Append);
         quadBuffer = new ComputeBuffer(voxelCount, sizeof(float) * 3 * 4, ComputeBufferType.Append);
-        //indexBuffer = new ComputeBuffer(4, sizeof(uint), ComputeBufferType.IndirectArguments);
+       
 
         vertexBuffer.SetCounterValue(0);
         quadBuffer.SetCounterValue(0);
-        //indexBuffer.SetCounterValue(0);
 
         // Kernel 1: InitVertices
         int initKernel = surfaceNetsShader.FindKernel("InitVertices");
+        surfaceNetsShader.SetTexture(initKernel, "ScalarFieldTexture", scalarFieldTexture);
         surfaceNetsShader.SetInt("gridSize", fieldSize);
+        surfaceNetsShader.SetInt("textureSize", fieldSize + 1);
         surfaceNetsShader.SetFloat("voxelSize", voxelSize);
         surfaceNetsShader.SetFloat("isoLevel", isoLevel);
         surfaceNetsShader.SetVector("chunkWorldPosition", chunkWorldPosition);
-        //surfaceNetsShader.SetTexture(initKernel, "ScalarField", scalarFieldTexture);
+        surfaceNetsShader.SetTexture(initKernel, "ScalarField", scalarFieldTexture);
         surfaceNetsShader.SetBuffer(initKernel, "Vertices", vertexBuffer);
 
-        surfaceNetsShader.Dispatch(initKernel, fieldSize / 8, fieldSize / 8, fieldSize / 8);
+        int threadGroups = Mathf.CeilToInt(fieldSize / 8f);
+        surfaceNetsShader.Dispatch(initKernel, threadGroups / 8, threadGroups / 8, threadGroups / 8);
 
         // Kernel 2: GetQuads
         int quadKernel = surfaceNetsShader.FindKernel("GetQuads");
+        surfaceNetsShader.SetTexture(quadKernel, "ScalarFieldTexture", scalarFieldTexture);
         surfaceNetsShader.SetBuffer(quadKernel, "Vertices", vertexBuffer);
         surfaceNetsShader.SetBuffer(quadKernel, "Quads", quadBuffer);
-        surfaceNetsShader.Dispatch(quadKernel, fieldSize / 8, fieldSize / 8, fieldSize / 8);
+        surfaceNetsShader.Dispatch(quadKernel, threadGroups / 8, threadGroups / 8, threadGroups / 8);
 
-            
-        int quadCount = GetCount(quadBuffer);
-        // Kernel 3: GetIndices
-        //int triKernel = surfaceNetsShader.FindKernel("GetIndices");
-        //surfaceNetsShader.SetBuffer(triKernel, "Quads", quadBuffer);
-        //surfaceNetsShader.SetBuffer(triKernel, "Indices", indexBuffer);
-        //surfaceNetsShader.Dispatch(triKernel, quadCount, 1, 1); 
     }
+
 
     Mesh ExtractMesh()
     {
@@ -105,7 +172,6 @@ public class SNGPUGenerator : MeshGenerator
             triangles[ti + 0] = vi + 0;
             triangles[ti + 1] = vi + 1;
             triangles[ti + 2] = vi + 2;
-
             triangles[ti + 3] = vi + 2;
             triangles[ti + 4] = vi + 3;
             triangles[ti + 5] = vi + 0;
@@ -133,6 +199,5 @@ public class SNGPUGenerator : MeshGenerator
     {
         vertexBuffer?.Release();
         quadBuffer?.Release();
-        //indexBuffer?.Release();
     }
 }

@@ -61,6 +61,7 @@ public class SurfaceNets : MonoBehaviour
         return x * gridSize * gridSize + y * gridSize + z;
     }
 
+
     private static float CubeSDF(Vector3 position)
     {
         Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
@@ -75,17 +76,17 @@ public class SurfaceNets : MonoBehaviour
         return outside + inside;
     }
 
-    private static float SampleSDF(Vector3 position)
+    private static float SphereSDF(Vector3 position)
     {
         float radius = 11.0f;
         Vector3 center = new Vector3(gridSize * voxelSize / 2, gridSize * voxelSize / 2, gridSize * voxelSize / 2);
         return Vector3.Distance(position, center) - radius;
     }
 
-    //private static float SampleSDF(Vector3 position)
-    //{
-    //    return Mathf.Max(CubeSDF(position), -SphereSDF(position));
-    //}
+    private static float SampleSDF(Vector3 position)
+    {
+        return Mathf.Max(CubeSDF(position), -SphereSDF(position));
+    }
 
     private Vector3 computeGradient(float x, float y, float z)
     {
@@ -150,8 +151,6 @@ public class SurfaceNets : MonoBehaviour
 
                         Debug.Log($"SN/Solved Position: {avg}");
 
-                        // Optional debug
-                        //Instantiate(spherePrefab, avg, Quaternion.identity);
                     }
                 }
             }
@@ -274,7 +273,6 @@ public class SurfaceNets : MonoBehaviour
             Vector3 v = vertices[i];
             uvs[i] = new Vector2(v.x / (gridSize * voxelSize), v.z / (gridSize * voxelSize));
         }
-        //mesh.uv = uvs;
 
 
         GameObject meshObject = new GameObject("Surface Nets Mesh");

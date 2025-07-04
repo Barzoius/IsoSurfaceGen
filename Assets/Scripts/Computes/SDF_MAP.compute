@@ -48,19 +48,20 @@ float ridgedNoise(float2 p) {
 
 float ridgedFBM(float2 p) {
     float total = 0.0;
-    float amplitude = 0.2;
+    float amplitude = 0.5;
     float frequency = 0.01;
 
-    for (int i = 0; i < 8; i++) {
-        total += ridgedNoise(p * frequency) * amplitude;
-        frequency *= 1.0;
+    for (int i = 0; i < 6; i++) {
+        float r = ridgedNoise(p * frequency);
+        total += r * amplitude;
+
+        frequency *= 2.0;
         amplitude *= 0.5;
     }
 
     return total;
 }
 
-// Sample SDF used to compute field value
 float SampleSDF(float3 p) {
     float valley = fbm(p.xz);
     float mountain = ridgedFBM(p.xz);

@@ -6,7 +6,7 @@ public class InfWorld : MonoBehaviour
 {
     //256 MC CPU still runs
 
-    public const float viewDist = 124;
+    public const float viewDist =  124;
 
     public Transform cam;
     public static Vector3 camPos;
@@ -50,36 +50,6 @@ public class InfWorld : MonoBehaviour
         {
             UpdateVisibleChunks(); 
         }
-
-
-        //if (Input.GetMouseButton(0)) // Left click
-        //{
-        //    UnityEngine.Debug.Log("pressed");
-        //    Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        //    if (Physics.Raycast(ray, out RaycastHit hit, 100f))
-        //    {
-        //        UnityEngine.Debug.Log("raycast");
-        //        Vector3 hitPoint = hit.point;
-
-        //        // Get chunk coordinates from hit point
-        //        Vector3 chunkCoord = new Vector3(
-        //            Mathf.Floor(hitPoint.x / chunkSize),
-        //            Mathf.Floor(hitPoint.y / chunkSize),
-        //            Mathf.Floor(hitPoint.z / chunkSize)
-        //        );
-
-        //        if (chunkDir.TryGetValue(chunkCoord, out Chunk chunk))
-        //        {
-        //            UnityEngine.Debug.Log("got chunked");
-        //            if (chunk.meshGenerator is MCGPUGenerator mcGen)
-        //            {
-        //                UnityEngine.Debug.Log("edit");
-        //                mcGen.Edit(hitPoint, -1f, 2.0f); // Dig
-        //                chunk.RegenerateMesh();
-        //            }
-        //        }
-        //    }
-        //}
     }
 
     void UpdateVisibleChunks()
@@ -114,7 +84,7 @@ public class InfWorld : MonoBehaviour
                     }
                     else
                     {
-                        var chunkGenerator = Instantiate(algorithm) as MCGPUGenerator;
+                        var chunkGenerator = Instantiate(algorithm);
                         chunkDir.Add(chunkCoord, new Chunk(chunkCoord, chunkSize, chunkGenerator));
                     }
                 }
@@ -165,7 +135,6 @@ public class InfWorld : MonoBehaviour
 
             chunkMesh = meshGenerator.ConstructMesh(pos, size, 1);
          
-
             meshOBJ = new GameObject("Chunk " + pos);
 
             meshOBJ.transform.position = Vector3.zero;
@@ -189,14 +158,14 @@ public class InfWorld : MonoBehaviour
             meshFilter.mesh = chunkMesh;
 
 
-            meshRenderer.material = new Material(Shader.Find("Custom/HeightColored"));
+            meshRenderer.material = new Material(Shader.Find("Unlit/tth"));
 
             meshOBJ.SetActive(false);
         }
 
         public void RegenerateMesh()
         {
-            UnityEngine.Debug.Log("regen");
+            
             chunkMesh = meshGenerator.ConstructMesh(pos, size, 1);
             meshOBJ.GetComponent<MeshFilter>().mesh = chunkMesh;
 

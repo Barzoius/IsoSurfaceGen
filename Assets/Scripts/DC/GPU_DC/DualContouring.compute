@@ -167,9 +167,13 @@ void InitVertices(uint3 id : SV_DispatchThreadID)
 
     if (count > 0)
     {
-        //avg /= count;
         float3 vertex = float3(0, 0, 0);
         QefSolver_solve(qef, 1e-8f, 16, 1e-8f, vertex);
+
+        float3 voxelMin = basePos;
+        float3 voxelMax = basePos + float3(voxelSize, voxelSize, voxelSize);
+        vertex = clamp(vertex, voxelMin, voxelMax);
+
         Vertices[FlattenIndex(id.x, id.y, id.z)] = vertex;
     }
 }
@@ -186,6 +190,7 @@ struct Quad
 };
 
 AppendStructuredBuffer<Quad> Quads;
+
 
 
 [numthreads(8, 8, 8)]

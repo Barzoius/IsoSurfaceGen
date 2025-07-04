@@ -68,6 +68,11 @@ public class MCGenerator : MeshGenerator
         return p1 + t * (p2 - p1);
     }
 
+    public override void Edit(Vector3 point, float density, float radius)
+    {
+    }
+
+        
     void March(Vector3 position)
     {
  

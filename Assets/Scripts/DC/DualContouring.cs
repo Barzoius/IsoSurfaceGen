@@ -12,8 +12,8 @@ namespace DC
         public static int gridSize = 64;
         public static int voxelSize = 1;
 
-        public static float QEF_ERROR = 1e-6f;
-        public static int QEF_SWEEPS = 4;
+        public static float QEF_ERROR = 1e-16f;
+        public static int QEF_SWEEPS = 16;
 
         public GameObject spherePrefab;
 
@@ -69,6 +69,7 @@ namespace DC
             Debug.Assert(IsValidCoord(z));
             return x * gridSize * gridSize + y * gridSize + z;
         }
+
 
         private static float CubeSDF(Vector3 position)
         {
@@ -145,13 +146,8 @@ namespace DC
 
                         //-----QR/SVD ROUTE
 
-
-                        //QEF qef = new QEF();
-
    
                         QefSolver qef = new QefSolver();
-
-
 
                         int cnt = 0;
                         foreach (Edge edge in grid[index].edgeData)
@@ -307,7 +303,10 @@ namespace DC
                 meshRenderer = gameObject.AddComponent<MeshRenderer>();
                 //meshRenderer.material = new Material(Shader.Find("Custom/doubleSided"));
                 //meshRenderer.material = new Material(Shader.Find("Custom/HeightColored"));
-                meshRenderer.material = new Material(Shader.Find("Standard"));
+                Material material = new Material(Shader.Find("Custom/TriplanarMapping"));
+                material.SetFloat("_Tiling", 0.1f);
+                meshRenderer.material = material;
+                //meshRenderer.material = new Material(Shader.Find("Standard"));
 
             }
 

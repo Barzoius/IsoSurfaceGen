@@ -66,13 +66,6 @@ public class DCGPUGenerator : MeshGenerator
         surfaceNetsShader.SetBuffer(quadKernel, "Quads", quadBuffer);
         surfaceNetsShader.Dispatch(quadKernel, fieldSize / 8, fieldSize / 8, fieldSize / 8);
 
-
-        int quadCount = GetCount(quadBuffer);
-        // Kernel 3: GetIndices
-        int triKernel = surfaceNetsShader.FindKernel("GetIndices");
-        surfaceNetsShader.SetBuffer(triKernel, "Quads", quadBuffer);
-        surfaceNetsShader.SetBuffer(triKernel, "Indices", indexBuffer);
-        surfaceNetsShader.Dispatch(triKernel, quadCount, 1, 1);
     }
 
     Mesh ExtractMesh()
@@ -113,6 +106,9 @@ public class DCGPUGenerator : MeshGenerator
         return mesh;
     }
 
+    public override void Edit(Vector3 point, float density, float radius)
+    {
+    }
     int GetCount(ComputeBuffer buffer)
     {
         ComputeBuffer countBuffer = new ComputeBuffer(1, sizeof(int), ComputeBufferType.Raw);

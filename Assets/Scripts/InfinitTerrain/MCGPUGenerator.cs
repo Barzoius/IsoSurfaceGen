@@ -45,7 +45,7 @@ public class MCGPUGenerator : MeshGenerator
             initialized = true;
         }
 
-        int maxTriangleCount = fieldSize * fieldSize * fieldSize * 5; // Safe overestimate
+        int maxTriangleCount = fieldSize * fieldSize * fieldSize * 5; 
         triangleBuffer = new ComputeBuffer(maxTriangleCount, Marshal.SizeOf(typeof(Triangle)), ComputeBufferType.Append);
         triangleBuffer.SetCounterValue(0);
 
@@ -100,23 +100,21 @@ public class MCGPUGenerator : MeshGenerator
     }
 
 
-    public void Edit(Vector3 point, float density, float radius)
+    public override void Edit(Vector3 point, float density, float radius)
     {
-        Debug.Log("edit func");
-
-        // Use the actual chunk size for correct scaling
-        float pixelWorld = 1;  // Add fallback
+  
+        float pixelWorld = 1f;  
 
         int editRadius = Mathf.CeilToInt(radius / pixelWorld);
 
-        // Convert world space point to voxel-local space
-        float tx = Mathf.Clamp01((point.x - chunkWorldPosition.x) / fieldSize);
-        float ty = Mathf.Clamp01((point.y - chunkWorldPosition.y) / fieldSize);
-        float tz = Mathf.Clamp01((point.z - chunkWorldPosition.z) / fieldSize);
+        float tx = Mathf.Clamp01((point.x - chunkWorldPosition.x) / (fieldSize * voxelSize));
 
-        int editX = Mathf.RoundToInt(tx * (fieldSize));
-        int editY = Mathf.RoundToInt(ty * (fieldSize));
-        int editZ = Mathf.RoundToInt(tz * (fieldSize));
+        float ty = Mathf.Clamp01((point.y - chunkWorldPosition.y) / (fieldSize * voxelSize));
+        float tz = Mathf.Clamp01((point.z - chunkWorldPosition.z) / (fieldSize * voxelSize));
+
+        int editX = Mathf.RoundToInt(tx * (fieldSize)) + 1;
+        int editY = Mathf.RoundToInt(ty * (fieldSize)) + 1;
+        int editZ = Mathf.RoundToInt(tz * (fieldSize)) + 1;
 
         Debug.Log($"Editing at voxel [{editX}, {editY}, {editZ}] with radius {editRadius}");
 
@@ -141,11 +139,11 @@ public class MCGPUGenerator : MeshGenerator
             scalarFieldTexture.Release();
 
         var format = UnityEngine.Experimental.Rendering.GraphicsFormat.R32_SFloat;
-        scalarFieldTexture = new RenderTexture(fieldSize+1, fieldSize+1 , 0)
+        scalarFieldTexture = new RenderTexture(fieldSize+3, fieldSize+3 , 0)
         {
             graphicsFormat = format,
             dimension = UnityEngine.Rendering.TextureDimension.Tex3D,
-            volumeDepth = fieldSize +1 ,
+            volumeDepth = fieldSize +3 ,
             enableRandomWrite = true
         };
 

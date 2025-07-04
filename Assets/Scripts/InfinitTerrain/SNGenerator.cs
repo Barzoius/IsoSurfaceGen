@@ -80,7 +80,11 @@ public class SMGenerator : MeshGenerator
     //}
 
 
+    public override void Edit(Vector3 point, float density, float radius)
+    {
+    }
 
+        
     private Vector3 computeGradient(float x, float y, float z)
     {
         float eps = 0.01f;

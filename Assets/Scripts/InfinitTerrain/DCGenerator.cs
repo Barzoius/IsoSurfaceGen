@@ -81,6 +81,12 @@ public class DCGenerator : MeshGenerator
         return position.y - totalHeight;
     }
 
+
+
+    public override void Edit(Vector3 point, float density, float radius)
+    {
+    }
+
     //float SampleSDF(Vector3 position)
     //{
     //    float planeHeight = 2f;

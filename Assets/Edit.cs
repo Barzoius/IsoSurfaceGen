@@ -5,8 +5,8 @@ using UnityEngine;
 
 public class Edit : MonoBehaviour
 {
-    public float editRadius = 100;
-    public float editStrength = 100;
+    public float editRadius = 10;
+    public float editStrength = 20;
     [SerializeField] private LayerMask terrainLayer;
     public bool subtractMode = false;
 
@@ -33,13 +33,13 @@ public class Edit : MonoBehaviour
     {
 
 
-        if (Input.GetMouseButton(0)) // Left-click to edit
+        if (Input.GetMouseButton(0)) // Left-click 
         {
             Debug.Log("pressed");
             Ray ray = cam.ScreenPointToRay(Input.mousePosition);
 
             //Debug.DrawRay(ray.origin, ray.direction * 200f, Color.red);
-            if (Physics.Raycast(ray, out RaycastHit hit, 600f, terrainLayer))
+            if (Physics.Raycast(ray, out RaycastHit hit, 1000f, terrainLayer))
             {
                 Debug.Log("hit");
 
@@ -47,39 +47,50 @@ public class Edit : MonoBehaviour
             }
         }
 
-        // Optional toggle between add/subtract mode
+        
         if (Input.GetKeyDown(KeyCode.E))
             subtractMode = !subtractMode;
     }
 
     void TryEditChunk(Vector3 hitPoint)
     {
-        Vector3 chunkCoord = new Vector3(
-            Mathf.Floor(hitPoint.x / 64f),
-            Mathf.Floor(hitPoint.y / 64f),
-            Mathf.Floor(hitPoint.z / 64f)
+        float chunkSize = 64f; 
+        Vector3 min = hitPoint - Vector3.one * editRadius;
+        Vector3 max = hitPoint + Vector3.one * editRadius;
+
+        Vector3Int minChunkCoord = new Vector3Int(
+            Mathf.FloorToInt(min.x / chunkSize),
+            Mathf.FloorToInt(min.y / chunkSize),
+            Mathf.FloorToInt(min.z / chunkSize)
         );
 
-        if (world.chunkDir.TryGetValue(chunkCoord, out var chunk))
+        Vector3Int maxChunkCoord = new Vector3Int(
+            Mathf.FloorToInt(max.x / chunkSize),
+            Mathf.FloorToInt(max.y / chunkSize),
+            Mathf.FloorToInt(max.z / chunkSize)
+        );
+
+        for (int x = minChunkCoord.x; x <= maxChunkCoord.x; x++)
         {
-            var generator = chunk.meshGenerator as MCGPUGenerator;
-            if (generator != null)
+            for (int y = minChunkCoord.y; y <= maxChunkCoord.y; y++)
             {
-                Debug.Log("edit");
-                float strength = subtractMode ? -editStrength : editStrength;
-                generator.Edit(hitPoint, strength, editRadius);
-                chunk.RegenerateMesh();
+                for (int z = minChunkCoord.z; z <= maxChunkCoord.z; z++)
+                {
+                    Vector3 chunkCoord = new Vector3(x, y, z);
+
+                    if (world.chunkDir.TryGetValue(chunkCoord, out var chunk))
+                    {
+
+                            float strength = subtractMode ? -editStrength : editStrength;
+                            chunk.meshGenerator.Edit(hitPoint, strength, editRadius);
+                            chunk.RegenerateMesh();
+                        
+                    }
+                }
             }
         }
+
     }
 
-    //void OnDrawGizmos()
-    //{
-    //    if (hit)
-    //    {
-    //        Gizmos.color = Color.green;
-    //        Gizmos.DrawSphere(hitPoint, 0.25f);
-    //    }
-    //}
 
 }
